@@ -4,7 +4,9 @@
 
 #include "cmsis_gcc.h"
 #include "cpu/io.h"
-#include "hal/rtc.h"
+#include "hal/rf_ble.h"
+
+#include "FreeRTOS.h"
 
 
 #define __HAL_DISABLE_INTERRUPTS(x)                     \
@@ -21,243 +23,162 @@
     } while(0);
 
 
-static uint32_t counter_high;
-static TAILQ_HEAD(hal_timer_qhead, hal_rtc_timer) hal_timer_q;
+#define HAL_CH_IDX_TO_FREQ_OFFS(index) \
+    (((index) == 37)?\
+        (2)\
+        :\
+            (((index) == 38)?\
+                (26)\
+            :\
+                (((index) == 39)?\
+                    (80)\
+                :\
+                    ((/*((index) >= 0) &&*/ ((index) <= 10))?\
+                        ((index)*2 + 4)\
+                    :\
+                        ((index)*2 + 6)))))
 
 
-static void set_ocmp(uint32_t expiry)
+
+/**@brief The maximum possible length in device discovery mode. */
+#define DD_MAX_PAYLOAD_LENGTH         (31 + 6)
+
+
+/**@brief The default SHORTS configuration. */
+#define DEFAULT_RADIO_SHORTS                                             \
+(                                                                        \
+    (RADIO_SHORTS_READY_START_Enabled << RADIO_SHORTS_READY_START_Pos) | \
+    (RADIO_SHORTS_END_DISABLE_Enabled << RADIO_SHORTS_END_DISABLE_Pos)   \
+)
+
+
+/**@brief The default CRC init polynominal. 
+   @note Written in little endian but stored in big endian, because the BLE spec. prints
+         is in little endian but the HW stores it in big endian. */
+#define CRC_POLYNOMIAL_INIT_SETTINGS  ((0x5B << 0) | (0x06 << 8) | (0x00 << 16))
+
+
+
+
+static uint8_t priv_pwr;
+static uint32_t rng_seed;
+static void (*fun_cb)(void);
+
+
+void hal_rf_ble_pwr_on(void)
 {
-	int32_t delta_t;
-	uint32_t temp;
-	uint32_t cntr;
-	
-	NRF_RTC0->INTENCLR = RTC_INTENCLR_COMPARE0_Msk;
-        temp = counter_high;
-        
-	cntr = NRF_RTC0->COUNTER;
-        if (NRF_RTC0->EVENTS_OVRFLW) {
-            temp += (1UL << 24);
-            cntr = NRF_RTC0->COUNTER;
-        }
-
-        temp |= cntr;
-        delta_t = (int32_t)(expiry - temp);
-
-        /*
-         * The nrf documentation states that you must set the output
-         * compare to 2 greater than the counter to guarantee an interrupt.
-         * Since the counter can tick once while we check, we make sure
-         * it is greater than 2.
-         */
-        if (delta_t < 3) {
-            NVIC_SetPendingIRQ(RTC0_IRQn);
-        } else  {
-            if (delta_t < (1UL << 24)) {
-                NRF_RTC0->CC[0] = expiry & 0x00ffffff;
-            } else {
-                /* CC too far ahead. Just make sure we set compare far ahead */
-                NRF_RTC0->CC[0] = cntr + (1UL << 23);
-            }
-
-            NRF_RTC0->INTENSET = RTC_INTENSET_COMPARE0_Msk;
-        }
-}
-
-
-static void disable_ocmp(void)
-{
-	NRF_RTC0->INTENCLR = RTC_INTENCLR_COMPARE0_Msk;
-}
-
-
-static void chk_queue(void)
-{
-	int32_t delta;
-	uint32_t tcntr;
-	uint32_t ctx;
-	struct hal_rtc_timer *timer;
-
-	/* disable interrupts */
-	__HAL_DISABLE_INTERRUPTS(ctx);
-	while ((timer = TAILQ_FIRST(&hal_timer_q)) != NULL) {
-		tcntr = hal_rtc_time();
-		/*
-		 * If we are within 3 ticks of RTC, we wont be able to set compare.
-		 * Thus, we have to service this timer early.
-		 */
-		delta = -3;
-
-		if ((int32_t)(tcntr - timer->expiry) >= delta) {
-			TAILQ_REMOVE(&hal_timer_q, timer, link);
-			timer->link.tqe_prev = NULL;
-			timer->cb_fun(timer->arg);
-		} else {
-			break;
-		}
+	/* Enable HF clock and set RF power on*/
+	if ((NRF_CLOCK->HFCLKSTAT & CLOCK_HFCLKRUN_STATUS_Msk) == CLOCK_HFCLKSTAT_STATE_NotRunning) {
+		NRF_CLOCK->EVENTS_HFCLKSTARTED = 0;
+		NRF_CLOCK->TASKS_HFCLKSTART = 0x1;
+                while (NRF_CLOCK->EVENTS_HFCLKSTARTED == 0);
 	}
 
-	
-	/* Any timers left on queue? If so, we need to set OCMP */
-	timer = TAILQ_FIRST(&hal_timer_q);
-	if (timer) {
-		set_ocmp(timer->expiry);
-	} else {
-		disable_ocmp();
-        }
-
-	__HAL_ENABLE_INTERRUPTS(ctx);
+	NRF_RADIO->POWER = RADIO_POWER_POWER_Enabled;
 }
 
 
-void hal_rtc_init(void)
-{	
-	counter_high = 0;
-
-	/* We only allow to run at 32768Hz clock speed
-	 * High counter is used to provide 32-bit timer
-	 */
-        NRF_RTC0->TASKS_STOP = 1;
-	NRF_RTC0->PRESCALER = 0;
-        NRF_RTC0->EVENTS_OVRFLW = 0;
-	NRF_RTC0->INTENSET = RTC_INTENSET_OVRFLW_Msk;
-	NRF_RTC0->TASKS_CLEAR = 1;
-	NRF_RTC0->TASKS_START = 1;
-
-	//NVIC_SetPriority(RTC0_IRQn, configKERNEL_INTERRUPT_PRIORITY);
-	NVIC_EnableIRQ(RTC0_IRQn);
-}
-
-
-void hal_rtc_deinit(void)
-{	
-	NRF_RTC0->TASKS_STOP = 1;
-	NVIC_DisableIRQ(RTC0_IRQn);
-	NVIC_ClearPendingIRQ(RTC0_IRQn);
-}
-
-
-uint32_t hal_rtc_time(void)
+void hal_rf_ble_reset(void)
 {
-	uint32_t low32;
+	NRF_RADIO->POWER = RADIO_POWER_POWER_Disabled;
+	asm volatile ("DMB":::"memory");
+        NRF_RADIO->POWER = RADIO_POWER_POWER_Enabled;
+        asm volatile ("DMB":::"memory");
+}
+
+
+void hal_rf_ble_pwr_off(void)
+{
+	/* Disable HF clock and RF power off*/
+        NRF_RADIO->POWER = RADIO_POWER_POWER_Disabled;
+        NVIC_DisableIRQ(RADIO_IRQn);
+	NRF_CLOCK->TASKS_HFCLKSTOP = 0x1;
+}
+
+
+void hal_rf_ble_address(uint8_t *addr)
+{
+	uint32_t address0 = NRF_FICR->DEVICEADDR[0];
+	uint32_t address1 = NRF_FICR->DEVICEADDR[1];
+
+	addr[0] = (uint8_t)address0;
+	address0 >>= 8;
+        addr[1] = (uint8_t)address0;
+	address0 >>= 8;
+	addr[2] = (uint8_t)address0;
+	address0 >>= 8;
+        addr[3] = (uint8_t)address0;
+        addr[4] = (uint8_t)address1;
+        address1 >>= 8;
+        addr[5] = (uint8_t)address1;
+}
+
+
+void hal_rf_ble_set_tx_pwr(uint8_t pwr)
+{
+	priv_pwr = pwr;
+}
+
+
+void hal_rf_ble_send_adv(uint8_t ch, uint8_t *data, void (*cb_done)(void))
+{
 	uint32_t ctx;
-	uint32_t tcntr;
 	__HAL_DISABLE_INTERRUPTS(ctx);
-	tcntr = counter_high;
-	low32 = NRF_RTC0->COUNTER;
+        fun_cb = cb_done;
+	NRF_RADIO->PCNF0 = (((1UL) << RADIO_PCNF0_S0LEN_Pos) & RADIO_PCNF0_S0LEN_Msk)
+			| (((2UL) << RADIO_PCNF0_S1LEN_Pos) & RADIO_PCNF0_S1LEN_Msk)
+			| (((6UL) << RADIO_PCNF0_LFLEN_Pos) & RADIO_PCNF0_LFLEN_Msk);
 
-	if (NRF_RTC0->EVENTS_OVRFLW) {
-		tcntr += (1UL << 24);
-		counter_high = tcntr;
-		low32 = NRF_RTC0->COUNTER;
-		NRF_RTC0->EVENTS_OVRFLW = 0;
-		NVIC_SetPendingIRQ(RTC0_IRQn);
-	}
-	
-	tcntr |= low32;
-	__HAL_ENABLE_INTERRUPTS(ctx);
-
-	return tcntr;
-}
-
-
-bool hal_rtc_start(struct hal_rtc_timer *timer, uint32_t ticks)
-{
-	uint32_t tick;
-        tick = hal_rtc_time() + ticks;
-	return hal_rtc_start_at(timer, tick);
-}
-
-
-bool hal_rtc_start_at(struct hal_rtc_timer *timer, uint32_t tick)
-{
-	uint32_t ctx;
-	struct hal_rtc_timer *entry;
+	NRF_RADIO->PCNF1 = (((RADIO_PCNF1_ENDIAN_Little)       << RADIO_PCNF1_ENDIAN_Pos) & RADIO_PCNF1_ENDIAN_Msk)
+			| (((3UL)                              << RADIO_PCNF1_BALEN_Pos)  & RADIO_PCNF1_BALEN_Msk)
+			| (((0UL)                              << RADIO_PCNF1_STATLEN_Pos)& RADIO_PCNF1_STATLEN_Msk)
+			| ((((uint32_t)DD_MAX_PAYLOAD_LENGTH)  << RADIO_PCNF1_MAXLEN_Pos) & RADIO_PCNF1_MAXLEN_Msk)
+			| ((RADIO_PCNF1_WHITEEN_Enabled << RADIO_PCNF1_WHITEEN_Pos) & RADIO_PCNF1_WHITEEN_Msk);
     
-	if ((timer == NULL) || (timer->link.tqe_prev != NULL) ||
-			(timer->cb_fun == NULL)) {
-		return false;
-	}
-    
-	timer->expiry = tick;
+	NRF_RADIO->CRCPOLY = (uint32_t)CRC_POLYNOMIAL_INIT_SETTINGS;
+	NRF_RADIO->CRCCNF = (((RADIO_CRCCNF_SKIPADDR_Skip) << RADIO_CRCCNF_SKIPADDR_Pos) & RADIO_CRCCNF_SKIPADDR_Msk)
+			| (((RADIO_CRCCNF_LEN_Three)      << RADIO_CRCCNF_LEN_Pos)       & RADIO_CRCCNF_LEN_Msk);
+	NRF_RADIO->CRCINIT = 0x555555;
 
-	__HAL_DISABLE_INTERRUPTS(ctx);
+	NRF_RADIO->MODE    = ((RADIO_MODE_MODE_Ble_1Mbit) << RADIO_MODE_MODE_Pos) & RADIO_MODE_MODE_Msk;
+	NRF_RADIO->MODECNF0 = RADIO_MODECNF0_RU_Fast << RADIO_MODECNF0_RU_Pos;
 
-	if (TAILQ_EMPTY(&hal_timer_q)) {
-		TAILQ_INSERT_HEAD(&hal_timer_q, timer, link);
-	} else {
-		TAILQ_FOREACH(entry, &hal_timer_q, link) {
-			if ((int32_t)(timer->expiry - entry->expiry) < 0) {
-				TAILQ_INSERT_BEFORE(entry, timer, link);
-				break;
-			}
-		}
-		
-		if (!entry) {
-			TAILQ_INSERT_TAIL(&hal_timer_q, timer, link);
-		}
-	}
+	NRF_RADIO->TIFS = 100;
 
-	/* If this is the head, we need to set new OCMP */
-	if (timer == TAILQ_FIRST(&hal_timer_q)) {
-		set_ocmp(timer->expiry);
-	}
+	NRF_RADIO->TXPOWER = priv_pwr;
+        NRF_RADIO->FREQUENCY = HAL_CH_IDX_TO_FREQ_OFFS(ch);
+	NRF_RADIO->DATAWHITEIV = ch;
 
-	__HAL_ENABLE_INTERRUPTS(ctx);
+	NRF_RADIO->PREFIX0 = 0x8E;
+	NRF_RADIO->BASE0   = 0x89BED600;
+
+	NRF_RADIO->PACKETPTR = (uint32_t)data;
+
+        /*Disable all interrupts*/
+	NRF_RADIO->INTENCLR = 0xFFFFffff;
+        NRF_RADIO->SHORTS = DEFAULT_RADIO_SHORTS;
+
+	NVIC_SetPriority(RADIO_IRQn, configLIBRARY_LOWEST_INTERRUPT_PRIORITY);
+	NVIC_ClearPendingIRQ(RADIO_IRQn);
+	NVIC_EnableIRQ(RADIO_IRQn);
+	NRF_RADIO->INTENSET = (RADIO_INTENSET_DISABLED_Enabled << RADIO_INTENSET_DISABLED_Pos);
+        NRF_RADIO->EVENTS_DISABLED = 0;
+        NRF_RADIO->TASKS_TXEN = 0x1;
+        __HAL_ENABLE_INTERRUPTS(ctx);
 }
 
 
-void hal_rtc_stop(struct hal_rtc_timer *timer)
+void hal_rf_ble_recv(uint8_t ch, uint8_t length, uint8_t *data, void (*cb_done)(void))
 {
-	uint32_t ctx;
-	int reset_ocmp;
-	struct hal_rtc_timer *entry;
-
-	if (timer == NULL) {
-		return;
-	}
-
-	__HAL_DISABLE_INTERRUPTS(ctx);
-
-	if (timer->link.tqe_prev != NULL) {
-		reset_ocmp = 0;
-		if (timer == TAILQ_FIRST(&hal_timer_q)) {
-			/* If first on queue, we will need to reset OCMP */
-			entry = TAILQ_NEXT(timer, link);
-			reset_ocmp = 1;
-		}
-
-		TAILQ_REMOVE(&hal_timer_q, timer, link);
-		timer->link.tqe_prev = NULL;
-		if (reset_ocmp) {
-			if (entry) {
-				set_ocmp(entry->expiry);
-			} else {
-				disable_ocmp();
-			}
-		}
-	}
-
-	__HAL_ENABLE_INTERRUPTS(ctx);
 }
 
 
-void rtc0_handler(void)
+void radio_handler(void)
 {
-	uint32_t compare, overflow;
-	compare = NRF_RTC0->EVENTS_COMPARE[0];
-	
-	if (compare) {
-		NRF_RTC0->EVENTS_COMPARE[0] = 0;
+	NRF_RADIO->EVENTS_DISABLED = 0;
+	if (fun_cb) {
+		fun_cb();
 	}
 
-	overflow = NRF_RTC0->EVENTS_OVRFLW;
-	if (overflow) {
-		NRF_RTC0->EVENTS_OVRFLW = 0;
-		counter_high += (1UL << 24);
-	}
-
-	chk_queue();
-
-	/* Recommended by nordic to make sure interrupts are cleared */
-	compare = NRF_RTC0->EVENTS_COMPARE[0];
+	asm volatile("DMB":::"memory");
 }

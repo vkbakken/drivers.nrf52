@@ -4,6 +4,7 @@
 
 #include "cmsis_gcc.h"
 #include "cpu/io.h"
+#include "FreeRTOS.h"
 #include "hal/rtc.h"
 
 
@@ -70,6 +71,22 @@ static void disable_ocmp(void)
 }
 
 
+/*
+static void m_convert(uint32_t time_us, uint32_t *rtc_units, uint32_t *us_units)
+{
+   uint32_t u1, u2, t1, t2, t3;
+
+   t1 = time_us / 15625;
+   u1 = t1 * 512;
+   t2 = time_us - t1 * 15625;
+   u2 = (t2 << 9) / 15625;
+   t3 = (((t2 << 9) - u2 * 15625) + 256) >> 9;
+
+   *rtc_units = u1 + u2;
+   *us_units = t3;
+}
+*/
+
 static void chk_queue(void)
 {
 	int32_t delta;
@@ -112,7 +129,14 @@ static void chk_queue(void)
 void hal_rtc_init(void)
 {	
 	counter_high = 0;
-
+	/* Start the clock source if not already started*/
+	if ((NRF_CLOCK->LFCLKSTAT & CLOCK_LFCLKSTAT_STATE_Msk) == CLOCK_LFCLKSTAT_STATE_NotRunning) {
+		NRF_CLOCK->LFCLKSRC = CLOCK_LFCLKSRC_SRC_RC << CLOCK_LFCLKSRC_SRC_Pos;
+		NRF_CLOCK->TASKS_LFCLKSTART = 1;
+                while (NRF_CLOCK->EVENTS_LFCLKSTARTED == 0);
+		NRF_CLOCK->EVENTS_LFCLKSTARTED = 0;
+	}
+	
 	/* We only allow to run at 32768Hz clock speed
 	 * High counter is used to provide 32-bit timer
 	 */
@@ -123,7 +147,7 @@ void hal_rtc_init(void)
 	NRF_RTC0->TASKS_CLEAR = 1;
 	NRF_RTC0->TASKS_START = 1;
 
-	//NVIC_SetPriority(RTC0_IRQn, configKERNEL_INTERRUPT_PRIORITY);
+	NVIC_SetPriority(RTC0_IRQn, configKERNEL_INTERRUPT_PRIORITY);
 	NVIC_EnableIRQ(RTC0_IRQn);
 }
 
@@ -133,6 +157,8 @@ void hal_rtc_deinit(void)
 	NRF_RTC0->TASKS_STOP = 1;
 	NVIC_DisableIRQ(RTC0_IRQn);
 	NVIC_ClearPendingIRQ(RTC0_IRQn);
+
+        NRF_CLOCK->TASKS_LFCLKSTOP = 1;
 }
 
 

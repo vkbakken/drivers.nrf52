@@ -1,5 +1,5 @@
-#ifndef HAL_RTC_H_INCLUDED
-#define HAL_RTC_H_INCLUDED
+#ifndef HAL_BLE_H_INCLUDED
+#define HAL_BLE_H_INCLUDED
 
 
 #include <stdint.h>
@@ -10,23 +10,16 @@
 extern "C" {
 #endif
 
-
-struct hal_rtc_timer {
-	void (*cb_fun)(void *arg);
-	void *arg;
-	uint32_t expiry;
-        TAILQ_ENTRY(hal_rtc_timer) link;    /* Queue linked list structure */
-};
+#include <stdint.h>
 
 
-void hal_rtc_init(void);
-void hal_rtc_deinit(void);
-
-uint32_t hal_rtc_time(void);
-
-bool hal_rtc_start(struct hal_rtc_timer *timer, uint32_t ticks);
-bool hal_rtc_start_at(struct hal_rtc_timer *timer, uint32_t tick);
-void hal_rtc_stop(struct hal_rtc_timer *timer);
+void hal_rf_ble_pwr_on(void);
+void hal_rf_ble_pwr_off(void);
+void hal_rf_ble_reset(void);
+void hal_rf_ble_address(uint8_t *addr);
+void hal_rf_ble_set_tx_pwr(uint8_t pwr);
+void hal_rf_ble_send_adv(uint8_t ch, uint8_t *data, void (*cb_done)(void));
+void hal_rf_ble_recv(uint8_t ch, uint8_t length, uint8_t *data, void (*cb_done)(void));
 
 
 #ifdef __cplusplus
