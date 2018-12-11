@@ -1,15 +1,107 @@
-#include <stdint.h>
 #include <stdbool.h>
+#include <stdint.h>
 #include <stdlib.h>
 
+#include "FreeRTOS.h"
 #include "cmsis_gcc.h"
 #include "cpu/io.h"
-#include "FreeRTOS.h"
 #include "hal/rtc.h"
 
+#define __HAL_DISABLE_INTERRUPTS(x) \
+	do {                            \
+		x = __get_PRIMASK();        \
+		__disable_irq();            \
+	} while (0);
 
+#define __HAL_ENABLE_INTERRUPTS(x) \
+	do {                           \
+		if (!x) {                  \
+			__enable_irq();        \
+		}                          \
+	} while (0);
 
-//
+/*Segger embedded studio originally has offsetof macro which cannot be used in macros (like STATIC_ASSERT).
+  This redefinition is to allow using that. */
+#if defined(__SES_ARM) && defined(__GNUC__)
+#undef offsetof
+#define offsetof(TYPE, MEMBER) __builtin_offsetof(TYPE, MEMBER)
+#endif
+
+__STATIC_INLINE void hal_rtc0_event_clear(uint32_t event) {
+	*((volatile uint32_t *)((uint8_t *)NRF_RTC0 + (uint32_t)event)) = 0;
+	volatile uint32_t dummy = *((volatile uint32_t *)((uint8_t *)NRF_RTC0 + (uint32_t)event));
+	(void)dummy;
+}
+
+__STATIC_INLINE void hal_rtc0_cc_set(uint32_t ch, uint32_t cc_val) {
+	NRF_RTC0->CC[ch] = cc_val;
+}
+
+__STATIC_INLINE void hal_rtc0_int_disable(uint32_t mask) {
+	NRF_RTC0->INTENCLR = mask;
+}
+
+__STATIC_INLINE void hal_rtc0_int_enable(uint32_t mask) {
+	NRF_RTC0->INTENSET = mask;
+}
+
+void hal_rtc_init(void) {
+	//	counter_high = 0;
+	/* Start the clock source if not already started*/
+	if ((NRF_CLOCK->LFCLKSTAT & CLOCK_LFCLKSTAT_STATE_Msk) == CLOCK_LFCLKSTAT_STATE_NotRunning) {
+		NRF_CLOCK->LFCLKSRC = CLOCK_LFCLKSRC_SRC_RC << CLOCK_LFCLKSRC_SRC_Pos;
+		NRF_CLOCK->TASKS_LFCLKSTART = 1;
+		while (NRF_CLOCK->EVENTS_LFCLKSTARTED == 0)
+			;
+		NRF_CLOCK->EVENTS_LFCLKSTARTED = 0;
+	}
+
+	/* We only allow to run at 32768Hz clock speed
+	 * High counter is used to provide 32-bit timer
+	 */
+	NRF_RTC0->TASKS_STOP = 1;
+	NRF_RTC0->PRESCALER = 1087; // actual prescaler seem = (theory prescaler + theory prescaler/16 -1) //34;
+	NRF_RTC0->INTENSET = RTC_INTENSET_TICK_Msk;
+	NRF_RTC0->TASKS_CLEAR = 1;
+	NRF_RTC0->TASKS_START = 1;
+	NRF_RTC0->EVTENSET = RTC_EVTEN_OVRFLW_Msk;
+
+	NVIC_SetPriority(RTC0_IRQn, configKERNEL_INTERRUPT_PRIORITY);
+	NVIC_EnableIRQ(RTC0_IRQn);
+}
+
+uint32_t hal_rtc_counter_get(void) {
+	return NRF_RTC0->COUNTER;
+}
+
+void hal_rtc_event_tick_clear(void) {
+	hal_rtc0_event_clear(offsetof(NRF_RTC_Type, EVENTS_TICK));
+}
+
+void hal_rtc_tick_start(void) {
+	hal_rtc0_event_clear(offsetof(NRF_RTC_Type, EVENTS_TICK));
+	hal_rtc0_int_enable(RTC_INTENSET_TICK_Msk);
+}
+
+void hal_rtc_event_compare_clear(uint8_t channel_index) {
+	hal_rtc0_event_clear(offsetof(NRF_RTC_Type, EVENTS_COMPARE[channel_index]));
+}
+
+void hal_rtc_compare_set(uint8_t channel_index, uint32_t compare_value) {
+	/* Stop tick events */
+	hal_rtc0_int_disable(RTC_INTENSET_TICK_Msk);
+
+	/* Configure CC interrupt */
+	hal_rtc0_cc_set(channel_index, compare_value);
+	hal_rtc0_event_clear(offsetof(NRF_RTC_Type, EVENTS_COMPARE[channel_index]));
+	hal_rtc0_int_enable(RTC_INTENSET_COMPARE0_Msk);
+}
+
+void hal_rtc_compare_clear(uint8_t channel_index) {
+	hal_rtc0_int_disable(RTC_INTENSET_COMPARE0_Msk);
+	hal_rtc0_event_clear(offsetof(NRF_RTC_Type, EVENTS_COMPARE[channel_index]));
+}
+
 //static uint32_t counter_high;
 //static TAILQ_HEAD(hal_timer_qhead, hal_rtc_timer) hal_timer_q;
 //
@@ -114,30 +206,7 @@
 //}
 
 
-void hal_rtc_init(void)
-{	
-//	counter_high = 0;
-	/* Start the clock source if not already started*/
-	if ((NRF_CLOCK->LFCLKSTAT & CLOCK_LFCLKSTAT_STATE_Msk) == CLOCK_LFCLKSTAT_STATE_NotRunning) {
-		NRF_CLOCK->LFCLKSRC = CLOCK_LFCLKSRC_SRC_RC << CLOCK_LFCLKSRC_SRC_Pos;
-		NRF_CLOCK->TASKS_LFCLKSTART = 1;
-                while (NRF_CLOCK->EVENTS_LFCLKSTARTED == 0);
-		NRF_CLOCK->EVENTS_LFCLKSTARTED = 0;
-	}
-	
-	/* We only allow to run at 32768Hz clock speed
-	 * High counter is used to provide 32-bit timer
-	 */
-    NRF_RTC0->TASKS_STOP = 1;
-	NRF_RTC0->PRESCALER = 1087;// actual prescaler seem = (theory prescaler + theory prescaler/16 -1) //34;
-    NRF_RTC0->INTENSET = RTC_INTENSET_TICK_Msk;	
-	NRF_RTC0->TASKS_CLEAR = 1;
-	NRF_RTC0->TASKS_START = 1;
-    NRF_RTC0->EVTENSET = RTC_EVTEN_OVRFLW_Msk;
 
-	NVIC_SetPriority(RTC0_IRQn, configKERNEL_INTERRUPT_PRIORITY);
-	NVIC_EnableIRQ(RTC0_IRQn);
-}
 
 //
 //void hal_rtc_deinit(void)
