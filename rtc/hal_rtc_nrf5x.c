@@ -74,17 +74,13 @@ uint32_t hal_rtc_counter_get(void) {
 	return NRF_RTC0->COUNTER;
 }
 
-void hal_rtc_event_tick_clear(void) {
-	hal_rtc0_event_clear(offsetof(NRF_RTC_Type, EVENTS_TICK));
-}
-
 void hal_rtc_tick_start(void) {
 	hal_rtc0_event_clear(offsetof(NRF_RTC_Type, EVENTS_TICK));
 	hal_rtc0_int_enable(RTC_INTENSET_TICK_Msk);
 }
 
-void hal_rtc_event_compare_clear(uint8_t channel_index) {
-	hal_rtc0_event_clear(offsetof(NRF_RTC_Type, EVENTS_COMPARE[channel_index]));
+void hal_rtc_event_tick_clear(void) {
+	hal_rtc0_event_clear(offsetof(NRF_RTC_Type, EVENTS_TICK));
 }
 
 void hal_rtc_compare_set(uint8_t channel_index, uint32_t compare_value) {
@@ -94,11 +90,11 @@ void hal_rtc_compare_set(uint8_t channel_index, uint32_t compare_value) {
 	/* Configure CC interrupt */
 	hal_rtc0_cc_set(channel_index, compare_value);
 	hal_rtc0_event_clear(offsetof(NRF_RTC_Type, EVENTS_COMPARE[channel_index]));
-	hal_rtc0_int_enable(RTC_INTENSET_COMPARE0_Msk);
+	hal_rtc0_int_enable((0x1UL << (RTC_INTENSET_COMPARE0_Pos + channel_index)));
 }
 
 void hal_rtc_compare_clear(uint8_t channel_index) {
-	hal_rtc0_int_disable(RTC_INTENSET_COMPARE0_Msk);
+	hal_rtc0_int_disable((0x1UL << (RTC_INTENSET_COMPARE0_Pos + channel_index)));
 	hal_rtc0_event_clear(offsetof(NRF_RTC_Type, EVENTS_COMPARE[channel_index]));
 }
 
