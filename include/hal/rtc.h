@@ -4,7 +4,7 @@
 
 #include <stdint.h>
 #include "utils/queue.h"
-
+#include "list.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -15,6 +15,7 @@ struct hal_rtc_timer {
 	void (*cb_fun)(void *arg);
 	void *arg;
 	uint32_t expiry;
+    ListItem_t lnode;
         TAILQ_ENTRY(hal_rtc_timer) link;    /* Queue linked list structure */
 };
 
