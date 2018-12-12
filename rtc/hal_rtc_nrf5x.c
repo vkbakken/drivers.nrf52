@@ -129,8 +129,8 @@ static void chk_queue(void) {
 		delta = -3;
 
 		if ((int32_t)(tcntr - timer->expiry) >= delta) {
-			timer->cb_fun(timer->arg);
 			uxListRemove(&(timer->lnode));
+			timer->cb_fun(timer->arg);			
 		} else {
 			break;
 		}
@@ -224,7 +224,7 @@ bool hal_rtc_start_at(struct hal_rtc_timer *timer, uint32_t tick) {
 
 	__HAL_DISABLE_INTERRUPTS(ctx);
 	
-    listSET_LIST_ITEM_VALUE(&(timer->lnode), tick);
+    listSET_LIST_ITEM_VALUE(&(timer->lnode), 0);
     listSET_LIST_ITEM_OWNER(&(timer->lnode), timer);
 
     vListInitialiseItem( &( timer->lnode ) );

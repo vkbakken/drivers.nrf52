@@ -25,7 +25,7 @@ typedef struct hal_adc_channel_config hal_adc_channel_config_t;
 
 void hal_adc_init(hal_adc_resolution_t res);
 void hal_adc_channel_config(hal_adc_channel_config_t *config);
-void hal_adc_sample(uint8_t count, uint16_t data_source);
+void hal_adc_sample(uint8_t count, int16_t data_source);
 
 #ifdef __cplusplus
 }
