@@ -25,6 +25,8 @@ PRIVILEGED_DATA static List_t timer_list;
 static uint32_t counter_high;
 static TAILQ_HEAD(hal_timer_qhead, hal_rtc_timer) hal_timer_q;
 
+
+
 static void set_ocmp(uint32_t expiry) {
 	int32_t delta_t;
 	uint32_t temp;
