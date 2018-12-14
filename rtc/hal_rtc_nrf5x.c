@@ -84,7 +84,6 @@ static void m_convert(uint32_t time_us, uint32_t *rtc_units, uint32_t *us_units)
 }
 */
 
-uint32_t cntr=0;
 static void chk_queue(void) {
 	int32_t delta;
 	uint32_t tcntr;
@@ -117,7 +116,7 @@ static void chk_queue(void) {
 //	} else {
 //		disable_ocmp();
 //	}
-	cntr++;
+
 	timer = listGET_OWNER_OF_HEAD_ENTRY(&timer_list);
 	for(size_t i = 0; i < listCURRENT_LIST_LENGTH( &timer_list ); i++){
 		

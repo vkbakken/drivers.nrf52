@@ -20,7 +20,7 @@ typedef enum hal_adc_resolution hal_adc_resolution_t;
 struct hal_adc_channel_config{
     uint8_t channel;
     uint32_t analog_input;
-}
+};
 typedef struct hal_adc_channel_config hal_adc_channel_config_t;
 
 void hal_adc_init(hal_adc_resolution_t res);
