@@ -20,13 +20,13 @@ typedef struct hal_spi_instance hal_spi_instance_t;
  * @brief API to initialize SPI interface.
  * 
  */
-void hal_spi_init(void);
+void hal_spi_init(hal_spi_instance_t *spi_instance);
 
 /**
  * @brief API to deinitialize SPI interface.
  * 
  */
-void hal_spi_deinit(void);
+void hal_spi_deinit(hal_spi_instance_t *spi_instance);
 
 /**
  * @brief API to write data via SPI interface.
