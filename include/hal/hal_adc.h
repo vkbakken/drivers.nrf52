@@ -18,18 +18,21 @@ enum hal_adc_resolution{
 typedef enum hal_adc_resolution hal_adc_resolution_t;
 
 struct hal_adc_channel_config{
+	// from 0 to 7
     uint8_t channel;
-    uint32_t analog_input;
+	// from 0 to 9; 0 is not connected, 9 is VDD
+    uint8_t analog_input;
 };
 typedef struct hal_adc_channel_config hal_adc_channel_config_t;
 
-void hal_adc_init(hal_adc_resolution_t res);
-void hal_adc_channel_config(hal_adc_channel_config_t *config);
-void hal_adc_sample(uint8_t count, int16_t data_source);
+void hal_adc_config(hal_adc_resolution_t res, hal_adc_channel_config_t const * const config, uint8_t size);
+
+void hal_adc_sample(int16_t *data_source, uint8_t size);
 
 #ifdef __cplusplus
 }
 #endif
+
 #endif /*HAL_ADC_H_INCLUDED*/
 
 
