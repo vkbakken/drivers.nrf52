@@ -4,6 +4,8 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include "FreeRTOS.h"
+#include "hal/rtc.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -29,6 +31,19 @@ void hal_spi_init(hal_spi_instance_t *spi_instance);
 void hal_spi_deinit(hal_spi_instance_t *spi_instance);
 
 /**
+ * @brief 
+ * 
+ * @param spi_instance : pointer of insctance to manage SPI interface.
+ * @param data_w : pointer of data to write.
+ * @param size_w : number of byte write to.
+ * @param data_r : pointer of data read to.
+ * @param size_r : number of byte to read.
+ * @return true : successed.
+ * @return false : timeout.
+ */
+bool hal_spi_rw(hal_spi_instance_t *spi_instance, uint8_t *data_w, uint8_t size_w, uint8_t *data_r, uint8_t size_r);
+
+/**
  * @brief API to write data via SPI interface.
  * 
  * @param spi_instance : pointer of insctance to manage SPI interface.
@@ -50,18 +65,7 @@ bool hal_spi_write(hal_spi_instance_t *spi_instance, uint8_t *data, uint8_t size
  */
 bool hal_spi_read(hal_spi_instance_t *spi_instance, uint8_t *data, uint8_t size);
 
-/**
- * @brief 
- * 
- * @param spi_instance : pointer of insctance to manage SPI interface.
- * @param data_w : pointer of data to write.
- * @param size_w : number of byte write to.
- * @param data_r : pointer of data read to.
- * @param size_r : number of byte to read.
- * @return true : successed.
- * @return false : timeout.
- */
-bool hal_spi_rw(hal_spi_instance_t *spi_instance, uint8_t *data_w, uint8_t size_w, uint8_t *data_r, uint8_t size_r);
+
 
 #ifdef __cplusplus
 }
