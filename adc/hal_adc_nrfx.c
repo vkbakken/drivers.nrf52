@@ -2,8 +2,8 @@
 #include "hal/hal_adc.h"
 
 
-SemaphoreHandle_t xSemaphore = NULL;
-StaticSemaphore_t xSemaphoreBuffer;
+static TaskHandle_t xTaskToNotify = NULL;
+
 
 void hal_adc_config(hal_adc_resolution_t res, hal_adc_channel_config_t const *const config, uint8_t size) {
 	NRF_SAADC->RESOLUTION = res;
@@ -34,13 +34,12 @@ void hal_adc_config(hal_adc_resolution_t res, hal_adc_channel_config_t const *co
 
 	NRF_SAADC->ENABLE = SAADC_ENABLE_ENABLE_Disabled << SAADC_ENABLE_ENABLE_Pos;
 
-    xSemaphore = xSemaphoreCreateBinaryStatic( &xSemaphoreBuffer );
-
     NVIC_SetPriority(SAADC_IRQn, configLIBRARY_LOWEST_INTERRUPT_PRIORITY);	
 }
 
 
 bool hal_adc_sample(int16_t *data_source, uint8_t size, uint32_t timeout) {
+	uint32_t ulNotificationValue;
 	bool ret = false;
 
 	NRF_SAADC->RESULT.MAXCNT = size;
@@ -52,11 +51,12 @@ bool hal_adc_sample(int16_t *data_source, uint8_t size, uint32_t timeout) {
 	NRF_SAADC->TASKS_START = 1;
 	while (NRF_SAADC->EVENTS_STARTED == 0);
 	NRF_SAADC->EVENTS_STARTED = 0;
-
 	
-    if(xSemaphoreTake( xSemaphore, 0) == pdTRUE){
-		NRF_SAADC->TASKS_SAMPLE = 1;
-		ret = xSemaphoreTake( xSemaphore, pdMS_TO_TICKS( timeout ) );
+	NRF_SAADC->TASKS_SAMPLE = 1;
+
+	xTaskToNotify = xTaskGetCurrentTaskHandle();
+	if( ulTaskNotifyTake( pdTRUE, pdMS_TO_TICKS( timeout ) ) == 1){
+		ret = true;
 	}
 
 	NRF_SAADC->TASKS_STOP = 1;
@@ -75,6 +75,8 @@ void saadc_handler(void){
 
 	if (NRF_SAADC->EVENTS_END == 1) {
 		NRF_SAADC->EVENTS_END = 0;
-		xSemaphoreGiveFromISR( xSemaphore, &xHigherPriorityTaskWoken );
+        vTaskNotifyGiveFromISR( xTaskToNotify, &xHigherPriorityTaskWoken );
 	}	
+
+    portYIELD_FROM_ISR( xHigherPriorityTaskWoken );
 }
