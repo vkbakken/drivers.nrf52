@@ -4,12 +4,15 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include "FreeRTOS.h"
+#include "hal/rtc.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 struct hal_i2c_instance{
+	uint8_t slave_address;
     uint32_t timeout;
 };
 typedef struct hal_i2c_instance hal_i2c_instance_t;

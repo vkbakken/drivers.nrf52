@@ -1,6 +1,10 @@
 #include "cpu/io.h"
 #include "hal/hal_adc.h"
 
+
+SemaphoreHandle_t xSemaphore = NULL;
+StaticSemaphore_t xSemaphoreBuffer;
+
 void hal_adc_config(hal_adc_resolution_t res, hal_adc_channel_config_t const *const config, uint8_t size) {
 	NRF_SAADC->RESOLUTION = res;
 	NRF_SAADC->OVERSAMPLE = 0;
@@ -29,24 +33,48 @@ void hal_adc_config(hal_adc_resolution_t res, hal_adc_channel_config_t const *co
 	while (NRF_SAADC->STATUS == (SAADC_STATUS_STATUS_Busy << SAADC_STATUS_STATUS_Pos));
 
 	NRF_SAADC->ENABLE = SAADC_ENABLE_ENABLE_Disabled << SAADC_ENABLE_ENABLE_Pos;
+
+    xSemaphore = xSemaphoreCreateBinaryStatic( &xSemaphoreBuffer );
+
+    NVIC_SetPriority(SAADC_IRQn, configLIBRARY_LOWEST_INTERRUPT_PRIORITY);	
 }
 
-void hal_adc_sample(int16_t *data_source, uint8_t size) {
+
+bool hal_adc_sample(int16_t *data_source, uint8_t size, uint32_t timeout) {
+	bool ret = false;
+
 	NRF_SAADC->RESULT.MAXCNT = size;
 	NRF_SAADC->RESULT.PTR = (uint32_t)data_source;
+	NRF_SAADC->INTENSET = SAADC_INTENSET_END_Msk;
 	NRF_SAADC->ENABLE = (SAADC_ENABLE_ENABLE_Enabled << SAADC_ENABLE_ENABLE_Pos);
+	NVIC_EnableIRQ(SAADC_IRQn);
 
 	NRF_SAADC->TASKS_START = 1;
 	while (NRF_SAADC->EVENTS_STARTED == 0);
 	NRF_SAADC->EVENTS_STARTED = 0;
 
-	NRF_SAADC->TASKS_SAMPLE = 1;
-	while (NRF_SAADC->EVENTS_END == 0);
-	NRF_SAADC->EVENTS_END = 0;
+	
+    if(xSemaphoreTake( xSemaphore, 0) == pdTRUE){
+		NRF_SAADC->TASKS_SAMPLE = 1;
+		ret = xSemaphoreTake( xSemaphore, pdMS_TO_TICKS( timeout ) );
+	}
 
 	NRF_SAADC->TASKS_STOP = 1;
 	while (NRF_SAADC->EVENTS_STOPPED == 0);
 	NRF_SAADC->EVENTS_STOPPED = 0;
 
 	NRF_SAADC->ENABLE = SAADC_ENABLE_ENABLE_Disabled << SAADC_ENABLE_ENABLE_Pos;
+	NVIC_DisableIRQ(SAADC_IRQn);
+
+	return ret;
+}
+
+
+void saadc_handler(void){
+	BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+
+	if (NRF_SAADC->EVENTS_END == 1) {
+		NRF_SAADC->EVENTS_END = 0;
+		xSemaphoreGiveFromISR( xSemaphore, &xHigherPriorityTaskWoken );
+	}	
 }

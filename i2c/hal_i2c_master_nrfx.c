@@ -1,4 +1,4 @@
-#include "cmsis_gcc.h"
+#include "board/pins.h"
 #include "cpu/io.h"
 #include "hal/hal_i2c_master.h"
 
