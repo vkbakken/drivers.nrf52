@@ -39,7 +39,6 @@ void hal_adc_config(hal_adc_resolution_t res, hal_adc_channel_config_t const *co
 
 
 bool hal_adc_sample(int16_t *data_source, uint8_t size, uint32_t timeout) {
-	uint32_t ulNotificationValue;
 	bool ret = false;
 
 	NRF_SAADC->RESULT.MAXCNT = size;

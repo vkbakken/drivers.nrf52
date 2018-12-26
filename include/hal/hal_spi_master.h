@@ -5,17 +5,52 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include "FreeRTOS.h"
-#include "hal/rtc.h"
+#include "task.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-struct hal_spi_instance{
+
+typedef enum {
+    SPI_FREQ_125K = 0,
+    SPI_FREQ_250K,
+    SPI_FREQ_500K,
+    SPI_FREQ_1M,
+    SPI_FREQ_2M,
+    SPI_FREQ_4M,
+    SPI_FREQ_8M
+} spi_frequency_t;
+
+
+typedef enum {
+    SPI_CLOCK_POLARITY_ActiveHigh = 0UL,
+    SPI_CLOCK_POLARITY_ActiveLow
+} spi_cpol_t;
+
+
+typedef enum {
+    SPI_CLOCK_PHASE_Leading = 0UL,
+    SPI_CLOCK_PHASE_Trailing
+} spi_cpha_t;
+
+
+typedef enum {
+    SPI_BIT_ORDER_MsbFirst = 0UL,
+    SPI_BIT_ORDER_LsbFirst
+} spi_bit_order_t;
+
+
+typedef struct {
+	struct spi_config{
+		spi_frequency_t frequency;
+		spi_cpol_t clock_polarity;
+		spi_cpha_t clock_phase;
+        spi_bit_order_t bit_order;
+	}config;
     uint8_t SS_pin;
     uint32_t timeout;
-};
-typedef struct hal_spi_instance hal_spi_instance_t;
+}hal_spi_instance_t;
 
 
 /**

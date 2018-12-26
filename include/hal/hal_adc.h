@@ -11,21 +11,20 @@
 extern "C" {
 #endif
 
-enum hal_adc_resolution{
+typedef enum {
     ADC_RES_8BIT = 0,
     ADC_RES_10BIT,
     ADC_RES_12BIT,
     ADC_RES_14BIT
-};
-typedef enum hal_adc_resolution hal_adc_resolution_t;
+}hal_adc_resolution_t;
 
-struct hal_adc_channel_config{
+
+typedef struct {
 	// from 0 to 7
     uint8_t channel;
 	// from 0 to 9; 0 is not connected, 9 is VDD
     uint8_t analog_input;
-};
-typedef struct hal_adc_channel_config hal_adc_channel_config_t;
+}hal_adc_channel_config_t;
 
 void hal_adc_config(hal_adc_resolution_t res, hal_adc_channel_config_t const * const config, uint8_t size);
 
