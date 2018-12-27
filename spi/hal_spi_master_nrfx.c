@@ -2,7 +2,9 @@
 #include "cpu/io.h"
 #include "hal/hal_spi_master.h"
 
-static TaskHandle_t xTaskToNotify = NULL;
+
+static SemaphoreHandle_t xSemaphoreSPI = NULL;
+static StaticSemaphore_t xSemaphoreBufferSPI;
 
 __STATIC_INLINE uint32_t hal_spi_freq_convert(spi_frequency_t freq) {
 	switch (freq) {
@@ -56,6 +58,7 @@ void hal_spi_init(hal_spi_instance_t *spi_instance) {
 	NRF_SPIM0->PSEL.MISO = BOARD_ACCEL_MISO_bp;
 
 	NRF_SPIM0->FREQUENCY = hal_spi_freq_convert(spi_instance->config.frequency);
+
 	NRF_SPIM0->CONFIG = (spi_instance->config.bit_order << SPIM_CONFIG_ORDER_Pos) |
 						(spi_instance->config.clock_polarity << SPIM_CONFIG_CPOL_Pos) |
 						(spi_instance->config.clock_phase << SPIM_CONFIG_CPHA_Pos);
@@ -66,6 +69,9 @@ void hal_spi_init(hal_spi_instance_t *spi_instance) {
 
 	NVIC_SetPriority(SPIM0_SPIS0_IRQn, configLIBRARY_LOWEST_INTERRUPT_PRIORITY);
 	NVIC_EnableIRQ(SPIM0_SPIS0_IRQn);
+
+    xSemaphoreSPI = xSemaphoreCreateBinaryStatic(&xSemaphoreBufferSPI);
+    xSemaphoreGive(xSemaphoreSPI);
 }
 
 void hal_spi_deinit(hal_spi_instance_t *spi_instance) {
@@ -96,26 +102,28 @@ void hal_spi_deinit(hal_spi_instance_t *spi_instance) {
 										  (GPIO_PIN_CNF_SENSE_Disabled << GPIO_PIN_CNF_SENSE_Pos);
 
 	NVIC_DisableIRQ(SPIM0_SPIS0_IRQn);
+    vSemaphoreDelete(xSemaphoreSPI);
 }
 
 bool hal_spi_rw(hal_spi_instance_t *spi_instance, uint8_t *data_w, uint8_t size_w, uint8_t *data_r, uint8_t size_r) {
 	bool ret = false;
+		
+    if(xSemaphoreTake(xSemaphoreSPI, 0) == pdTRUE){
+		NRF_SPIM0->TXD.PTR = (uint32_t)data_w;
+		NRF_SPIM0->TXD.MAXCNT = size_w;
+		NRF_SPIM0->RXD.PTR = (uint32_t)data_r;
+		NRF_SPIM0->RXD.MAXCNT = size_r;
 
-	NRF_SPIM0->TXD.PTR = (uint32_t)data_w;
-	NRF_SPIM0->TXD.MAXCNT = size_w;
-	NRF_SPIM0->RXD.PTR = (uint32_t)data_r;
-	NRF_SPIM0->RXD.MAXCNT = size_r;
+		//select a slave and start spi transaction
+		NRF_P0->OUTSET = 1UL << spi_instance->SS_pin;
+		
+		NRF_SPIM0->EVENTS_END = 0x0UL;
+        NRF_SPIM0->INTENSET = SPIM_INTENSET_END_Msk;
+		NRF_SPIM0->TASKS_START = 0x1UL;
 
-	//select a slave and start spi transaction
-	NRF_P0->OUTSET = 1UL << spi_instance->SS_pin;
-
-	NRF_SPIM0->EVENTS_END = 0x0UL;
-	NRF_SPIM0->TASKS_START = 0x1UL;
-
-	xTaskToNotify = xTaskGetCurrentTaskHandle();
-	if (ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(spi_instance->timeout)) == 1) {
-		ret = true;
-	}
+ 		ret = xSemaphoreTake(xSemaphoreSPI, spi_instance->timeout);
+		xSemaphoreGive(xSemaphoreSPI);
+ 	}
 
 	return ret;
 }
@@ -133,7 +141,7 @@ void serialbox0_handler(void) {
 
 	if (NRF_SPIM0->EVENTS_END) {
 		NRF_SPIM0->EVENTS_END = 0;
-		vTaskNotifyGiveFromISR(xTaskToNotify, &xHigherPriorityTaskWoken);
+        xSemaphoreGiveFromISR(xSemaphoreSPI, &xHigherPriorityTaskWoken);
 	}
 
 	portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
