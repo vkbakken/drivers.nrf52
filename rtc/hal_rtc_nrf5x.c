@@ -7,6 +7,7 @@
 #include "cpu/io.h"
 #include "hal/rtc.h"
 
+
 #define __HAL_DISABLE_INTERRUPTS(x) \
 	do {                            \
 		x = __get_PRIMASK();        \
@@ -20,7 +21,7 @@
 		}                          \
 	} while (0);
 
-bool rtc_isr=false;
+
 
 static List_t timer_list;
 
@@ -132,7 +133,7 @@ void hal_rtc_init(void) {
 	NRF_RTC0->TASKS_CLEAR = 1;
 	NRF_RTC0->TASKS_START = 1;
 
-	NVIC_SetPriority(RTC0_IRQn, configLIBRARY_MAX_SYSCALL_INTERRUPT_PRIORITY);
+	NVIC_SetPriority(RTC0_IRQn, configLIBRARY_LOWEST_INTERRUPT_PRIORITY);
 	NVIC_EnableIRQ(RTC0_IRQn);
 }
 
@@ -191,7 +192,6 @@ bool hal_rtc_start_at(struct hal_rtc_timer *timer, uint32_t tick) {
 
 	if(timer == listGET_OWNER_OF_HEAD_ENTRY(&timer_list)){
 		set_ocmp(listGET_LIST_ITEM_VALUE(&(timer->lnode)));
-        rtc_isr=false;
 	}
 
 	__HAL_ENABLE_INTERRUPTS(ctx);
@@ -228,7 +228,6 @@ void hal_rtc_stop(struct hal_rtc_timer *timer) {
 }
 
 void rtc0_handler(void) {
-	rtc_isr=true;
 	uint32_t compare, overflow;
 	compare = NRF_RTC0->EVENTS_COMPARE[0];
 

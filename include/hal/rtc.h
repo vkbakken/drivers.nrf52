@@ -10,7 +10,6 @@
 extern "C" {
 #endif
 
-extern bool rtc_isr;
 
 struct hal_rtc_timer {
 	void (*cb_fun)(void *arg);
