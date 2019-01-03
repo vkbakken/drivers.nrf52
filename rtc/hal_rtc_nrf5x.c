@@ -21,7 +21,10 @@
 //		}                          \
 //	} while (0);
 
-
+__STATIC_INLINE bool nrfx_is_in_ram(void * p_object)
+{
+    return ((((uint32_t)p_object) & 0xE0000000u) == 0x20000000u);
+}
 
 static List_t timer_list;
 
@@ -217,7 +220,7 @@ void hal_rtc_stop(struct hal_rtc_timer *timer) {
 
 	uxListRemove(&(timer->lnode));
 	if (reset_ocmp) {
-		if (entry) {
+		if (nrfx_is_in_ram(entry)) {
 			set_ocmp(listGET_LIST_ITEM_VALUE(&(entry->lnode)));
 		} else {
 			disable_ocmp();
