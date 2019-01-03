@@ -2,20 +2,6 @@
 #include "hal/hal_adc.h"
 
 
-#define __HAL_DISABLE_INTERRUPTS(x) \
-	do {                            \
-		x = __get_PRIMASK();        \
-		__disable_irq();            \
-	} while (0);
-
-#define __HAL_ENABLE_INTERRUPTS(x) \
-	do {                           \
-		if (!x) {                  \
-			__enable_irq();        \
-		}                          \
-	} while (0);
-
-
 static TaskHandle_t xTaskToNotify = NULL;
 static SemaphoreHandle_t xSemaphoreADC = NULL;
 static StaticSemaphore_t xSemaphoreBufferADC;
@@ -100,8 +86,8 @@ bool hal_adc_sample(int16_t *data_source, uint8_t size, uint32_t ticks) {
 	
 
 	
-    if(xSemaphoreTake(xSemaphoreADC, 1) == pdTRUE){
-		__HAL_DISABLE_INTERRUPTS(ctx);
+    if(xSemaphoreTake(xSemaphoreADC, 0) == pdTRUE){
+        portENABLE_INTERRUPTS();
 
 		NRF_SAADC->RESULT.MAXCNT = size;
 		NRF_SAADC->RESULT.PTR = (uint32_t)data_source;    
@@ -113,7 +99,7 @@ bool hal_adc_sample(int16_t *data_source, uint8_t size, uint32_t ticks) {
 		NVIC_EnableIRQ(SAADC_IRQn);
     
 
-		__HAL_ENABLE_INTERRUPTS(ctx);
+		portDISABLE_INTERRUPTS();
 
 		NRF_SAADC->TASKS_START = 1;
 		while (NRF_SAADC->EVENTS_STARTED == 0);
@@ -136,10 +122,8 @@ bool hal_adc_sample(int16_t *data_source, uint8_t size, uint32_t ticks) {
 }
 
 
-uint32_t counter = 0;
 void saadc_handler(void){
 	BaseType_t xHigherPriorityTaskWoken = pdFALSE, xResult;
-	++counter;
 	if (NRF_SAADC->EVENTS_END == 1) {
 		NRF_SAADC->EVENTS_END = 0;
 //        vTaskNotifyGiveFromISR(xTaskToNotify, &xHigherPriorityTaskWoken);

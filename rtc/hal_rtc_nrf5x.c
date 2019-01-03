@@ -8,18 +8,18 @@
 #include "hal/rtc.h"
 
 
-#define __HAL_DISABLE_INTERRUPTS(x) \
-	do {                            \
-		x = __get_PRIMASK();        \
-		__disable_irq();            \
-	} while (0);
-
-#define __HAL_ENABLE_INTERRUPTS(x) \
-	do {                           \
-		if (!x) {                  \
-			__enable_irq();        \
-		}                          \
-	} while (0);
+//#define __HAL_DISABLE_INTERRUPTS(x) \
+//	do {                            \
+//		x = __get_PRIMASK();        \
+//		__disable_irq();            \
+//	} while (0);
+//
+//#define __HAL_ENABLE_INTERRUPTS(x) \
+//	do {                           \
+//		if (!x) {                  \
+//			__enable_irq();        \
+//		}                          \
+//	} while (0);
 
 
 
@@ -79,7 +79,7 @@ static void chk_queue(void) {
 	struct hal_rtc_timer *timer;
 
 	/* disable interrupts */
-	__HAL_DISABLE_INTERRUPTS(ctx);
+	portDISABLE_INTERRUPTS();
 
 	timer = listGET_OWNER_OF_HEAD_ENTRY(&timer_list);
 	for(size_t i = 0; i < listCURRENT_LIST_LENGTH( &timer_list ); i++){
@@ -108,7 +108,7 @@ static void chk_queue(void) {
 		disable_ocmp();
 	}
 
-	__HAL_ENABLE_INTERRUPTS(ctx);
+	portENABLE_INTERRUPTS();;
 }
 
 void hal_rtc_init(void) {
@@ -149,7 +149,7 @@ uint32_t hal_rtc_time(void) {
 	uint32_t low32;
 	uint32_t ctx;
 	uint32_t tcntr;
-	__HAL_DISABLE_INTERRUPTS(ctx);
+	portDISABLE_INTERRUPTS();
 	tcntr = counter_high;
 	low32 = NRF_RTC0->COUNTER;
 
@@ -162,7 +162,7 @@ uint32_t hal_rtc_time(void) {
 	}
 
 	tcntr |= low32;
-	__HAL_ENABLE_INTERRUPTS(ctx);
+	portENABLE_INTERRUPTS();
 
 	return tcntr;
 }
@@ -182,7 +182,7 @@ bool hal_rtc_start_at(struct hal_rtc_timer *timer, uint32_t tick) {
 		return false;
 	}
 
-	__HAL_DISABLE_INTERRUPTS(ctx);
+	portDISABLE_INTERRUPTS();
 	
     listSET_LIST_ITEM_VALUE(&(timer->lnode), tick);
     listSET_LIST_ITEM_OWNER(&(timer->lnode), timer);
@@ -194,7 +194,7 @@ bool hal_rtc_start_at(struct hal_rtc_timer *timer, uint32_t tick) {
 		set_ocmp(listGET_LIST_ITEM_VALUE(&(timer->lnode)));
 	}
 
-	__HAL_ENABLE_INTERRUPTS(ctx);
+	portENABLE_INTERRUPTS();
 }
 
 void hal_rtc_stop(struct hal_rtc_timer *timer) {
@@ -206,7 +206,7 @@ void hal_rtc_stop(struct hal_rtc_timer *timer) {
 		return;
 	}
 
-	__HAL_DISABLE_INTERRUPTS(ctx);
+	portDISABLE_INTERRUPTS();
 	reset_ocmp = 0;
 
 	if (timer == listGET_OWNER_OF_HEAD_ENTRY(&timer_list)) {
@@ -224,7 +224,7 @@ void hal_rtc_stop(struct hal_rtc_timer *timer) {
 		}
 	}
 
-	__HAL_ENABLE_INTERRUPTS(ctx);
+	portENABLE_INTERRUPTS();
 }
 
 void rtc0_handler(void) {
