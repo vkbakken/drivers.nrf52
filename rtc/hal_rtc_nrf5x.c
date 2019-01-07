@@ -8,23 +8,6 @@
 #include "hal/rtc.h"
 
 
-//#define __HAL_DISABLE_INTERRUPTS(x) \
-//	do {                            \
-//		x = __get_PRIMASK();        \
-//		__disable_irq();            \
-//	} while (0);
-//
-//#define __HAL_ENABLE_INTERRUPTS(x) \
-//	do {                           \
-//		if (!x) {                  \
-//			__enable_irq();        \
-//		}                          \
-//	} while (0);
-
-__STATIC_INLINE bool nrfx_is_in_ram(void * p_object)
-{
-    return ((((uint32_t)p_object) & 0xE0000000u) == 0x20000000u);
-}
 
 static List_t timer_list;
 
@@ -220,7 +203,7 @@ void hal_rtc_stop(struct hal_rtc_timer *timer) {
 
 	uxListRemove(&(timer->lnode));
 	if (reset_ocmp) {
-		if (nrfx_is_in_ram(entry)) {
+		if (!listLIST_IS_EMPTY(&timer_list)) {
 			set_ocmp(listGET_LIST_ITEM_VALUE(&(entry->lnode)));
 		} else {
 			disable_ocmp();

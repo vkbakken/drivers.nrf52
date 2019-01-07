@@ -5,24 +5,33 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include "FreeRTOS.h"
-#include "hal/rtc.h"
+#include "semphr.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-struct hal_i2c_instance{
+typedef enum {
+    I2C_FREQ_100K = 0,
+    I2C_FREQ_250K,
+    I2C_FREQ_400K
+} i2c_frequency_t;
+
+
+typedef struct hal_i2c_instance{
+    struct i2c_config{
+		i2c_frequency_t frequency;
+	}config;
 	uint8_t slave_address;
     uint32_t timeout;
-};
-typedef struct hal_i2c_instance hal_i2c_instance_t;
+}hal_i2c_instance_t;
 
 
 /**
  * @brief API to initialize i2c interface.
  * 
  */
-void hal_i2c_init(void);
+void hal_i2c_init(hal_i2c_instance_t *i2c_instance);
 
 /**
  * @brief API to deinitialize i2c interface.

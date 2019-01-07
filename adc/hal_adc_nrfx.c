@@ -2,7 +2,6 @@
 #include "hal/hal_adc.h"
 
 
-static TaskHandle_t xTaskToNotify = NULL;
 static SemaphoreHandle_t xSemaphoreADC = NULL;
 static StaticSemaphore_t xSemaphoreBufferADC;
 
@@ -39,52 +38,12 @@ void hal_adc_config(hal_adc_resolution_t res, hal_adc_channel_config_t const *co
     
 	xSemaphoreADC = xSemaphoreCreateBinaryStatic(&xSemaphoreBufferADC);
     xSemaphoreGive(xSemaphoreADC);
-
-//    xTaskToNotify = xTaskGetCurrentTaskHandle();
-//	xTaskNotifyGive(xTaskToNotify);
 }
 
 
 bool hal_adc_sample(int16_t *data_source, uint8_t size, uint32_t ticks) {
 	bool ret = false;
 	uint32_t ctx;
-
-//    if(ulTaskNotifyTake(pdTRUE, 0) != 0){
-//		__HAL_DISABLE_INTERRUPTS(ctx);
-//
-//		NRF_SAADC->RESULT.MAXCNT = size;
-//		NRF_SAADC->RESULT.PTR = (uint32_t)data_source;    
-//		NRF_SAADC->ENABLE = (SAADC_ENABLE_ENABLE_Enabled << SAADC_ENABLE_ENABLE_Pos);
-//		NRF_SAADC->INTEN = SAADC_INTEN_END_Msk;
-//		NRF_SAADC->INTENSET = SAADC_INTENSET_END_Msk;    
-//
-//		NVIC_ClearPendingIRQ(SAADC_IRQn);
-//		NVIC_EnableIRQ(SAADC_IRQn);
-//
-//
-//		__HAL_ENABLE_INTERRUPTS(ctx);
-//
-//		NRF_SAADC->TASKS_START = 1;
-//		while (NRF_SAADC->EVENTS_STARTED == 0);
-//		NRF_SAADC->EVENTS_STARTED = 0;
-//		NRF_SAADC->EVENTS_END = 0;
-//		NRF_SAADC->TASKS_SAMPLE = 1;
-//
-//		if(ulTaskNotifyTake(pdTRUE, ticks) != 0){
-//			ret = true;
-//			xTaskNotifyGive(xTaskToNotify);
-//		}
-//
-//
-//		NRF_SAADC->TASKS_STOP = 1;
-//		while (NRF_SAADC->EVENTS_STOPPED == 0);
-//		NRF_SAADC->EVENTS_STOPPED = 0;
-//
-//		NRF_SAADC->ENABLE = SAADC_ENABLE_ENABLE_Disabled << SAADC_ENABLE_ENABLE_Pos;
-//		NVIC_DisableIRQ(SAADC_IRQn);
-//	}
-	
-
 	
     if(xSemaphoreTake(xSemaphoreADC, 0) == pdTRUE){
         portENABLE_INTERRUPTS();
@@ -126,8 +85,6 @@ void saadc_handler(void){
 	BaseType_t xHigherPriorityTaskWoken = pdFALSE, xResult;
 	if (NRF_SAADC->EVENTS_END == 1) {
 		NRF_SAADC->EVENTS_END = 0;
-//        vTaskNotifyGiveFromISR(xTaskToNotify, &xHigherPriorityTaskWoken);
-
         xSemaphoreGiveFromISR(xSemaphoreADC, &xHigherPriorityTaskWoken);
 	}	
 
