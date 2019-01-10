@@ -2,8 +2,10 @@
 #include "cpu/io.h"
 #include "hal/hal_i2c_master.h"
 
+
 static SemaphoreHandle_t xSemaphoreI2C = NULL;
 static StaticSemaphore_t xSemaphoreBufferI2C;
+
 
 __STATIC_INLINE uint32_t hal_i2c_nrfx_freq_convert(i2c_frequency_t freq) {
 	switch (freq) {
@@ -17,7 +19,7 @@ __STATIC_INLINE uint32_t hal_i2c_nrfx_freq_convert(i2c_frequency_t freq) {
 }
 
 
-void hal_i2c_init(hal_i2c_instance_t *i2c_instance) {
+void hal_i2c_init(hal_i2c_instance_t const *const i2c_instance) {
 	NRF_P0->PIN_CNF[BOARD_MIC_CLK_bp] = (GPIO_PIN_CNF_DIR_Input << GPIO_PIN_CNF_DIR_Pos) |
 										(GPIO_PIN_CNF_INPUT_Connect << GPIO_PIN_CNF_INPUT_Pos) |
 										(GPIO_PIN_CNF_PULL_Pullup << GPIO_PIN_CNF_PULL_Pos) |
@@ -51,7 +53,7 @@ void hal_i2c_deinit(void) {
 }
 
 
-bool hal_i2c_write(hal_i2c_instance_t *i2c_instance, uint8_t *data, uint8_t size) {
+bool hal_i2c_write(hal_i2c_instance_t const *const i2c_instance, uint8_t *data, uint8_t size) {
 	bool ret = false;
 
 	if (xSemaphoreTake(xSemaphoreI2C, 0) == pdTRUE) {
@@ -80,7 +82,7 @@ bool hal_i2c_write(hal_i2c_instance_t *i2c_instance, uint8_t *data, uint8_t size
 }
 
 
-bool hal_i2c_read(hal_i2c_instance_t *i2c_instance, uint8_t *data, uint8_t size) {
+bool hal_i2c_read(hal_i2c_instance_t const *const i2c_instance, uint8_t *data, uint8_t size) {
 	bool ret = false;
 
 	if (xSemaphoreTake(xSemaphoreI2C, 0) == pdTRUE) {
@@ -109,7 +111,7 @@ bool hal_i2c_read(hal_i2c_instance_t *i2c_instance, uint8_t *data, uint8_t size)
 }
 
 
-void serialbox0_handler(void) {
+void twi0_handler(void) {
 	BaseType_t xHigherPriorityTaskWoken = pdFALSE;
 
 	if (NRF_TWIM0->EVENTS_LASTTX) {

@@ -8,6 +8,7 @@ static StaticSemaphore_t xSemaphoreBufferADC;
 void hal_adc_config(hal_adc_resolution_t res, hal_adc_channel_config_t const *const config, uint8_t size) {
 	NRF_SAADC->RESOLUTION = res;
 	NRF_SAADC->OVERSAMPLE = 0;
+
 	// Normal samplerate control from SAMPLE task
 	NRF_SAADC->SAMPLERATE = SAADC_SAMPLERATE_MODE_Task << SAADC_SAMPLERATE_MODE_Pos;
 
@@ -83,6 +84,7 @@ bool hal_adc_sample(int16_t *data_source, uint8_t size, uint32_t ticks) {
 
 void saadc_handler(void){
 	BaseType_t xHigherPriorityTaskWoken = pdFALSE, xResult;
+
 	if (NRF_SAADC->EVENTS_END == 1) {
 		NRF_SAADC->EVENTS_END = 0;
         xSemaphoreGiveFromISR(xSemaphoreADC, &xHigherPriorityTaskWoken);

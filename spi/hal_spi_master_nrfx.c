@@ -24,7 +24,7 @@ __STATIC_INLINE uint32_t hal_spi_nrfx_freq_convert(spi_frequency_t freq) {
 	}
 }
 
-void hal_spi_init(hal_spi_instance_t *spi_instance) {
+void hal_spi_init(hal_spi_instance_t const *const spi_instance) {
 	/* config pin IO used for SPI */
 	NRF_P0->OUTCLR = BOARD_ACCEL_CLK_bm;
 	NRF_P0->PIN_CNF[BOARD_ACCEL_CLK_bp] = (GPIO_PIN_CNF_DIR_Output << GPIO_PIN_CNF_DIR_Pos) |
@@ -75,7 +75,7 @@ void hal_spi_init(hal_spi_instance_t *spi_instance) {
 	xSemaphoreGive(xSemaphoreSPI);
 }
 
-void hal_spi_deinit(hal_spi_instance_t *spi_instance) {
+void hal_spi_deinit(hal_spi_instance_t const *const spi_instance) {
 	NRF_SPIM0->ENABLE = (SPIM_ENABLE_ENABLE_Disabled << SPIM_ENABLE_ENABLE_Pos);
 
 	NRF_P0->PIN_CNF[spi_instance->SS_pin] = (GPIO_PIN_CNF_DIR_Input << GPIO_PIN_CNF_DIR_Pos) |
@@ -106,7 +106,7 @@ void hal_spi_deinit(hal_spi_instance_t *spi_instance) {
 	vSemaphoreDelete(xSemaphoreSPI);
 }
 
-bool hal_spi_rw(hal_spi_instance_t *spi_instance, uint8_t *data_w, uint8_t size_w, uint8_t *data_r, uint8_t size_r) {
+bool hal_spi_rw(hal_spi_instance_t const *const spi_instance, uint8_t *data_w, uint8_t size_w, uint8_t *data_r, uint8_t size_r) {
 	bool ret = false;
 
 	if (xSemaphoreTake(xSemaphoreSPI, 0) == pdTRUE) {
@@ -134,15 +134,15 @@ bool hal_spi_rw(hal_spi_instance_t *spi_instance, uint8_t *data_w, uint8_t size_
 	return ret;
 }
 
-bool hal_spi_write(hal_spi_instance_t *spi_instance, uint8_t *data, uint8_t size) {
+bool hal_spi_write(hal_spi_instance_t const *const spi_instance, uint8_t *data, uint8_t size) {
 	return hal_spi_rw(spi_instance, data, size, NULL, 0);
 }
 
-bool hal_spi_read(hal_spi_instance_t *spi_instance, uint8_t *data, uint8_t size) {
+bool hal_spi_read(hal_spi_instance_t const *const spi_instance, uint8_t *data, uint8_t size) {
 	return hal_spi_rw(spi_instance, NULL, 0, data, size);
 }
 
-void serialbox1_handler(void) {
+void spi0_handler(void) {
 	BaseType_t xHigherPriorityTaskWoken = pdFALSE;
 
 	if (NRF_SPIM0->EVENTS_END) {
