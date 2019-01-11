@@ -106,7 +106,7 @@ void hal_spi_deinit(hal_spi_instance_t const *const spi_instance) {
 	vSemaphoreDelete(xSemaphoreSPI);
 }
 
-bool hal_spi_rw(hal_spi_instance_t const *const spi_instance, uint8_t *data_w, uint8_t size_w, uint8_t *data_r, uint8_t size_r) {
+bool hal_spi_wr(hal_spi_instance_t const *const spi_instance, uint8_t *data_w, uint8_t size_w, uint8_t *data_r, uint8_t size_r) {
 	bool ret = false;
 
 	if (xSemaphoreTake(xSemaphoreSPI, 0) == pdTRUE) {
@@ -135,11 +135,11 @@ bool hal_spi_rw(hal_spi_instance_t const *const spi_instance, uint8_t *data_w, u
 }
 
 bool hal_spi_write(hal_spi_instance_t const *const spi_instance, uint8_t *data, uint8_t size) {
-	return hal_spi_rw(spi_instance, data, size, NULL, 0);
+	return hal_spi_wr(spi_instance, data, size, NULL, 0);
 }
 
 bool hal_spi_read(hal_spi_instance_t const *const spi_instance, uint8_t *data, uint8_t size) {
-	return hal_spi_rw(spi_instance, NULL, 0, data, size);
+	return hal_spi_wr(spi_instance, NULL, 0, data, size);
 }
 
 void spi0_handler(void) {

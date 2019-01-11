@@ -69,7 +69,7 @@ void hal_spi_deinit(hal_spi_instance_t const *const spi_instance);
  * @return true : successed.
  * @return false : timeout.
  */
-bool hal_spi_rw(hal_spi_instance_t const *const spi_instance, uint8_t *data_w, uint8_t size_w, uint8_t *data_r, uint8_t size_r);
+bool hal_spi_wr(hal_spi_instance_t const *const spi_instance, uint8_t *data_w, uint8_t size_w, uint8_t *data_r, uint8_t size_r);
 
 /**
  * @brief API to write data via SPI interface.
