@@ -14,8 +14,8 @@ void hal_adc_config(hal_adc_resolution_t res, hal_adc_channel_config_t const *co
 
 	for (uint8_t i = 0; i < size; i++) {
 		/*Configure ADC*/
-		NRF_SAADC->CH[config[i].channel].CONFIG = (SAADC_CH_CONFIG_GAIN_Gain1_4 << SAADC_CH_CONFIG_GAIN_Pos) |
-												  (SAADC_CH_CONFIG_MODE_SE << SAADC_CH_CONFIG_MODE_Pos) |
+		NRF_SAADC->CH[config[i].channel].CONFIG = (config->gain << SAADC_CH_CONFIG_GAIN_Pos) |
+												  (config->mode << SAADC_CH_CONFIG_MODE_Pos) |
 												  (SAADC_CH_CONFIG_REFSEL_VDD1_4 << SAADC_CH_CONFIG_REFSEL_Pos) |
 												  (SAADC_CH_CONFIG_RESN_Bypass << SAADC_CH_CONFIG_RESN_Pos) |
 												  (SAADC_CH_CONFIG_RESP_Bypass << SAADC_CH_CONFIG_RESP_Pos) |
@@ -23,7 +23,11 @@ void hal_adc_config(hal_adc_resolution_t res, hal_adc_channel_config_t const *co
 
 		// Configure the SAADC channel with VDD as positive input, no negative input(single ended).
 		NRF_SAADC->CH[config[i].channel].PSELP = (uint32_t)config[i].analog_input << SAADC_CH_PSELP_PSELP_Pos;
-		NRF_SAADC->CH[config[i].channel].PSELN = SAADC_CH_PSELN_PSELN_NC << SAADC_CH_PSELN_PSELN_Pos;
+		if(config->mode == ADC_MODE_SINGLE_END){
+			NRF_SAADC->CH[config[i].channel].PSELN = SAADC_CH_PSELN_PSELN_NC << SAADC_CH_PSELN_PSELN_Pos;
+		}else{
+			NRF_SAADC->CH[config[i].channel].PSELN = (uint32_t)config[i].analog_input_diff << SAADC_CH_PSELP_PSELP_Pos;
+		}
 	}
 
 	NRF_SAADC->ENABLE = (SAADC_ENABLE_ENABLE_Enabled << SAADC_ENABLE_ENABLE_Pos);

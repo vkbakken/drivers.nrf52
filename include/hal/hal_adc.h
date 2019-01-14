@@ -13,18 +13,41 @@ extern "C" {
 #endif
 
 typedef enum {
-    ADC_RES_8BIT = 0,
+    ADC_RES_8BIT = 0x0UL,
     ADC_RES_10BIT,
     ADC_RES_12BIT,
     ADC_RES_14BIT
 }hal_adc_resolution_t;
 
 
+typedef enum {
+    ADC_MODE_SINGLE_END = 0x0UL,
+    ADC_MODE_DIFFERENTIAL
+}hal_adc_mode_t;
+
+
+typedef enum {
+    ADC_GAIN_1_6 = 0x0UL,
+    ADC_GAIN_1_5,
+    ADC_GAIN_1_4,
+    ADC_GAIN_1_3,
+	ADC_GAIN_1_2,
+	ADC_GAIN_1,
+    ADC_GAIN_2,
+    ADC_GAIN_4
+}hal_adc_gain_t;
+
+
 typedef struct {
 	// from 0 to 7
     uint8_t channel;
+	
 	// from 0 to 9; 0 is not connected, 9 is VDD
     uint8_t analog_input;
+    uint8_t analog_input_diff;
+
+    hal_adc_mode_t mode;
+	hal_adc_gain_t gain;
 }hal_adc_channel_config_t;
 
 /**
