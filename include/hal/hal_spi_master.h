@@ -96,4 +96,5 @@ bool hal_spi_read(hal_spi_instance_t const *const spi_instance, uint8_t *data, u
 #ifdef __cplusplus
 }
 #endif
+
 #endif /*HAL_SPI_H_INCLUDED*/
