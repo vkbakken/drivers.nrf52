@@ -21,6 +21,8 @@ typedef enum {
 typedef struct hal_i2c_instance{
     const struct i2c_config{
 		i2c_frequency_t frequency;
+		uint8_t pin_SCL;
+		uint8_t pin_SDA;
 	}config;
 	const uint8_t slave_address;
     uint32_t timeout;

@@ -41,6 +41,9 @@ typedef struct {
 		spi_cpol_t clock_polarity;
 		spi_cpha_t clock_phase;
 		spi_bit_order_t bit_order;
+		uint8_t pin_CLK;
+		uint8_t pin_MISO;
+		uint8_t pin_MOSI;
 	} config;
 	const uint8_t SS_pin;
 	uint32_t timeout;

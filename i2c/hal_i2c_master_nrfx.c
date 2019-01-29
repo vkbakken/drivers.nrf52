@@ -1,4 +1,3 @@
-#include "board/pins.h"
 #include "cpu/io.h"
 #include "hal/hal_i2c_master.h"
 
@@ -20,20 +19,8 @@ __STATIC_INLINE uint32_t hal_i2c_nrfx_freq_convert(i2c_frequency_t freq) {
 
 
 void hal_i2c_init(hal_i2c_instance_t const *const i2c_instance) {
-	NRF_P0->PIN_CNF[BOARD_MIC_CLK_bp] = (GPIO_PIN_CNF_DIR_Input << GPIO_PIN_CNF_DIR_Pos) |
-										(GPIO_PIN_CNF_INPUT_Connect << GPIO_PIN_CNF_INPUT_Pos) |
-										(GPIO_PIN_CNF_PULL_Pullup << GPIO_PIN_CNF_PULL_Pos) |
-										(GPIO_PIN_CNF_DRIVE_S0D1 << GPIO_PIN_CNF_DRIVE_Pos) |
-										(GPIO_PIN_CNF_SENSE_Disabled << GPIO_PIN_CNF_SENSE_Pos);
-
-	NRF_P0->PIN_CNF[BOARD_MIC_DATA_bp] = (GPIO_PIN_CNF_DIR_Input << GPIO_PIN_CNF_DIR_Pos) |
-										 (GPIO_PIN_CNF_INPUT_Connect << GPIO_PIN_CNF_INPUT_Pos) |
-										 (GPIO_PIN_CNF_PULL_Pullup << GPIO_PIN_CNF_PULL_Pos) |
-										 (GPIO_PIN_CNF_DRIVE_S0D1 << GPIO_PIN_CNF_DRIVE_Pos) |
-										 (GPIO_PIN_CNF_SENSE_Disabled << GPIO_PIN_CNF_SENSE_Pos);
-
-	NRF_TWIM0->PSEL.SCL = BOARD_MIC_CLK_bp;
-	NRF_TWIM0->PSEL.SDA = BOARD_MIC_DATA_bp;
+	NRF_TWIM0->PSEL.SCL = i2c_instance->config.pin_SCL;
+	NRF_TWIM0->PSEL.SDA = i2c_instance->config.pin_SDA;
 	NRF_TWIM0->FREQUENCY = hal_i2c_nrfx_freq_convert(i2c_instance->config.frequency);
 
 	NVIC_ClearPendingIRQ(TWIM0_TWIS0_IRQn);
