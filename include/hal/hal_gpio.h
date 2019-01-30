@@ -15,18 +15,18 @@ typedef enum {
 	GPIO_OUTPUT
 } gpio_dir_t;
 
-
 typedef enum {
 	GPIO_NOPULL = 0,
 	GPIO_PULL_DOWN,
 	GPIO_PULL_UP,
 } gpio_pull_t;
 
-
 typedef enum {
 	GPIO_INT_RISING = 0,
 	GPIO_INT_FALLING,
 } gpio_interrupt_signal_t;
+
+typedef void (interrupt_callback_t)(void);
 
 /**
  * @brief 
@@ -74,6 +74,29 @@ void hal_gpio_pin_clear(uint32_t * port, uint8_t pin, bool value);
  */
 void hal_gpio_pin_toggle(uint32_t * port, uint8_t pin);
 
+
+/**
+ * @brief 
+ * 
+ * @param port 
+ * @param pin 
+ * @param interrupt_signal 
+ * @param callback 
+ * @return true 
+ * @return false 
+ */
+bool hal_gpio_install_interrupt(uint32_t * port, uint8_t pin, gpio_interrupt_signal_t interrupt_signal, interrupt_callback_t * callback);
+
+/**
+ * @brief 
+ * 
+ * @param port 
+ * @param pin 
+ * @return true 
+ * @return false 
+ */
+bool hal_gpio_uninstall_interrupt(uint32_t * port, uint8_t pin);
+
 /**
  * @brief 
  * 
@@ -81,7 +104,7 @@ void hal_gpio_pin_toggle(uint32_t * port, uint8_t pin);
  * @param pin 
  * @return uint32_t 
  */
-uint32_t hal_gpio_port_read(uint32_t * port, uint8_t pin);
+uint32_t hal_gpio_port_read(uint32_t * port);
 
 /**
  * @brief 
@@ -106,27 +129,6 @@ void hal_gpio_port_clear(uint32_t * port, bool value);
  */
 void hal_gpio_port_toggle(uint32_t * port);
 
-/**
- * @brief 
- * 
- * @param port 
- * @param pin 
- * @param interrupt_signal 
- * @param callback 
- * @return true 
- * @return false 
- */
-bool hal_gpio_install_interrupt(uint32_t * port, uint8_t pin, gpio_interrupt_signal_t interrupt_signal, void (*callback)(void));
-
-/**
- * @brief 
- * 
- * @param port 
- * @param pin 
- * @return true 
- * @return false 
- */
-bool hal_gpio_uninstall_interrupt(uint32_t * port, uint8_t pin);
 
 #ifdef __cplusplus
 }
