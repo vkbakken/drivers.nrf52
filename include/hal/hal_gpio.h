@@ -123,12 +123,10 @@ bool hal_gpio_install_interrupt(uint32_t * port, uint8_t pin, gpio_interrupt_sig
  * 
  * @param port 
  * @param pin 
- * @param interrupt_signal 
- * @param callback 
  * @return true 
  * @return false 
  */
-bool hal_gpio_uninstall_interrupt(uint32_t * port, uint8_t pin, gpio_interrupt_signal_t interrupt_signal, void (*callback)(void));
+bool hal_gpio_uninstall_interrupt(uint32_t * port, uint8_t pin);
 
 #ifdef __cplusplus
 }
