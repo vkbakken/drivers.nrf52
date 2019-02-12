@@ -74,10 +74,6 @@ void hal_gpio_pin_clear(uint32_t * port, uint8_t pin, bool value);
  */
 void hal_gpio_pin_toggle(uint32_t * port, uint8_t pin);
 
-
-void hal_gpio_interrupt_enable(void);
-
-
 /**
  * @brief 
  * 

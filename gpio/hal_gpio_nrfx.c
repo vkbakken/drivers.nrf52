@@ -16,7 +16,9 @@ typedef struct {
 	interrupt_callback_t *handler;
 } gpiote_controller_t;
 
-gpiote_controller_t gpiote_controller[NRF_GPIOTE_CH_NUM];
+static gpiote_controller_t gpiote_controller[NRF_GPIOTE_CH_NUM];
+
+static bool interrupt_enabled = false;
 
 __STATIC_INLINE gpiote_controller_t *hal_gpiote_nrfx_get_free_channel(void) {
 	for (uint8_t i = 0; i < NRF_GPIOTE_CH_NUM; ++i) {
@@ -26,13 +28,12 @@ __STATIC_INLINE gpiote_controller_t *hal_gpiote_nrfx_get_free_channel(void) {
 	return NULL;
 }
 
-__STATIC_INLINE bool hal_gpiote_nrfx_check_pin_valid(uint8_t pin_number) {
-	/*Pin must not in use by any channels*/
+__STATIC_INLINE gpiote_controller_t * hal_gpiote_nrfx_check_pin_registered(uint8_t pin_number){
 	for (uint8_t i = 0; i < NRF_GPIOTE_CH_NUM; ++i) {
 		if (gpiote_controller[i].installed && gpiote_controller[i].pin_assigned == pin_number)
-			return false;
+			return &gpiote_controller[i];
 	}
-	return true;
+	return NULL;
 }
 
 __STATIC_INLINE void hal_gpiote_nrfx_configure(uint32_t idx, uint32_t pin_number, gpio_interrupt_signal_t interrupt_signal) {
@@ -45,6 +46,19 @@ __STATIC_INLINE void hal_gpiote_nrfx_configure(uint32_t idx, uint32_t pin_number
 
 __STATIC_INLINE uint32_t hal_gpiote_nrfx_int_is_enabled(uint32_t mask) {
 	return (NRF_GPIOTE->INTENSET & mask);
+}
+
+__STATIC_INLINE void hal_gpio_interrupt_enable(void) {
+	NVIC_SetPriority(GPIOTE_IRQn, configLIBRARY_LOWEST_INTERRUPT_PRIORITY);
+	NVIC_ClearPendingIRQ(GPIOTE_IRQn);
+	NVIC_EnableIRQ(GPIOTE_IRQn);
+	NRF_GPIOTE->EVENTS_PORT = 0UL;
+	NRF_GPIOTE->INTENSET = GPIOTE_INTENSET_PORT_Msk;
+}
+
+__STATIC_INLINE void hal_gpio_interrupt_disable(void) {
+	NVIC_ClearPendingIRQ(GPIOTE_IRQn);
+	NVIC_DisableIRQ(GPIOTE_IRQn);
 }
 
 void hal_gpio_config(uint32_t *port, uint8_t pin_number, gpio_dir_t dir, gpio_pull_t pull) {
@@ -74,18 +88,10 @@ void hal_gpio_pin_toggle(uint32_t *port, uint8_t pin_number) {
 	NRF_GPIO_PORT(port)->OUTCLR = (port_state & (0x1UL << pin_number));
 }
 
-void hal_gpio_interrupt_enable(void) {
-	NVIC_SetPriority(GPIOTE_IRQn, 6);
-	NVIC_ClearPendingIRQ(GPIOTE_IRQn);
-	NVIC_EnableIRQ(GPIOTE_IRQn);
-	NRF_GPIOTE->EVENTS_PORT = 0UL;
-	NRF_GPIOTE->INTENSET = GPIOTE_INTENSET_PORT_Msk;
-}
-
 bool hal_gpio_install_interrupt(uint32_t *port, uint8_t pin_number, gpio_pull_t pull, gpio_interrupt_signal_t interrupt_signal, interrupt_callback_t *callback) {
 	gpiote_controller_t *tmp_controller = NULL;
 
-	if (hal_gpiote_nrfx_check_pin_valid(pin_number)) {
+	if (NULL == hal_gpiote_nrfx_check_pin_registered(pin_number)) {
 		NRF_GPIO_PORT(port)->PIN_CNF[pin_number] = (GPIO_INPUT << GPIO_PIN_CNF_DIR_Pos) |
 												   ((pull == GPIO_PULL_UP ? pull + 1 : pull) << GPIO_PIN_CNF_PULL_Pos) |
 												   (GPIO_PIN_CNF_INPUT_Connect << GPIO_PIN_CNF_INPUT_Pos) |
@@ -99,12 +105,17 @@ bool hal_gpio_install_interrupt(uint32_t *port, uint8_t pin_number, gpio_pull_t 
 			tmp_controller->handler = callback;
 			tmp_controller->installed = true;
 
-			uint32_t channel_index = (tmp_controller - gpiote_controller) / sizeof(gpiote_controller_t);
+			uint32_t channel_index = (tmp_controller - gpiote_controller);
 
 			hal_gpiote_nrfx_configure(channel_index, pin_number, interrupt_signal);
 
 			NRF_GPIOTE->EVENTS_IN[channel_index] = 0UL;
 			NRF_GPIOTE->INTENSET = 1UL << channel_index;
+
+			if (!interrupt_enabled) {
+				hal_gpio_interrupt_enable();
+				interrupt_enabled = true;
+			}
 
 			return true;
 		}
@@ -113,6 +124,23 @@ bool hal_gpio_install_interrupt(uint32_t *port, uint8_t pin_number, gpio_pull_t 
 }
 
 bool hal_gpio_uninstall_interrupt(uint32_t *port, uint8_t pin_number) {
+	gpiote_controller_t *tmp_controller = hal_gpiote_nrfx_check_pin_registered(pin_number);
+	if (NULL != tmp_controller) {
+		tmp_controller->pin_assigned = 0;
+		tmp_controller->handler = NULL;
+		tmp_controller->installed = false;
+
+        uint32_t channel_index = (tmp_controller - gpiote_controller);
+		NRF_GPIOTE->EVENTS_IN[channel_index] = 0UL;
+		NRF_GPIOTE->INTENCLR = 1UL << channel_index;
+        /* Disable IRQ if there are not any channels enable */
+		if (!(NRF_GPIOTE->INTENSET & NRF_GPIOTE_INT_IN_MASK) && interrupt_enabled) {
+			hal_gpio_interrupt_disable();
+			interrupt_enabled = false;
+		}
+		return true;
+	}
+	return false;
 }
 
 uint32_t hal_gpio_port_read(uint32_t *port) {
@@ -134,7 +162,6 @@ void hal_gpio_port_toggle(uint32_t *port) {
 	NRF_GPIO_PORT(port)->OUTCLR = (port_state & 0xFFFFFFFF);
 }
 
-
 void gpiote_handler(void) {
 	uint32_t status = 0;
 	uint32_t mask = GPIOTE_INTENSET_IN0_Msk;
@@ -151,11 +178,11 @@ void gpiote_handler(void) {
 		mask = GPIOTE_INTENSET_IN0_Msk;
 		for (uint8_t i = 0; i < NRF_GPIOTE_CH_NUM; i++) {
 			if (mask & status) {
-				if (gpiote_controller[i].handler) {
+				if (gpiote_controller[i].installed && gpiote_controller[i].handler) {
 					gpiote_controller[i].handler();
 				}
 			}
 			mask <<= 1;
 		}
-	}	
+	}
 }
