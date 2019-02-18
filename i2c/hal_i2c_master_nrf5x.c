@@ -2,6 +2,19 @@
 #include "hal/hal_i2c_master.h"
 
 
+#if	defined(NRF52810_H)
+	#define SPI_REG				NRF_TWIM0
+    #define SPI_IRQ				TWIM0_TWIS0_IRQn
+    #define SPI_IRQ_HANDLER		twi0_handler
+#elif defined(NRF52_H)
+	#define I2C_REG				NRF_TWIM0
+    #define I2C_IRQ				SPIM0_SPIS0_TWIM0_TWIS0_SPI0_TWI0_IRQn
+    #define I2C_IRQ_HANDLER		serialbox0_handler
+#else
+	#error "This driver only support NRF52 and NRF52810 CPU"
+#endif
+
+
 static SemaphoreHandle_t xSemaphoreI2C = NULL;
 static StaticSemaphore_t xSemaphoreBufferI2C;
 
@@ -19,14 +32,14 @@ __STATIC_INLINE uint32_t hal_i2c_nrfx_freq_convert(i2c_frequency_t freq) {
 
 
 void hal_i2c_init(hal_i2c_instance_t const *const i2c_instance) {
-	NRF_TWIM0->PSEL.SCL = i2c_instance->config.pin_SCL;
-	NRF_TWIM0->PSEL.SDA = i2c_instance->config.pin_SDA;
-	NRF_TWIM0->FREQUENCY = hal_i2c_nrfx_freq_convert(i2c_instance->config.frequency);
+	I2C_REG->PSEL.SCL = i2c_instance->config.pin_SCL;
+	I2C_REG->PSEL.SDA = i2c_instance->config.pin_SDA;
+	I2C_REG->FREQUENCY = hal_i2c_nrfx_freq_convert(i2c_instance->config.frequency);
 
-	NVIC_ClearPendingIRQ(TWIM0_TWIS0_IRQn);
-	NVIC_EnableIRQ(TWIM0_TWIS0_IRQn);
+	NVIC_ClearPendingIRQ(I2C_IRQ);
+	NVIC_EnableIRQ(I2C_IRQ);
 
-	NRF_TWIM0->ENABLE = (TWIM_ENABLE_ENABLE_Enabled << TWIM_ENABLE_ENABLE_Pos);
+	I2C_REG->ENABLE = (TWIM_ENABLE_ENABLE_Enabled << TWIM_ENABLE_ENABLE_Pos);
 
 	xSemaphoreI2C = xSemaphoreCreateBinaryStatic(&xSemaphoreBufferI2C);
 	xSemaphoreGive(xSemaphoreI2C);
@@ -34,8 +47,8 @@ void hal_i2c_init(hal_i2c_instance_t const *const i2c_instance) {
 
 
 void hal_i2c_deinit(void) {
-	NRF_TWIM0->ENABLE = (TWIM_ENABLE_ENABLE_Disabled << TWIM_ENABLE_ENABLE_Pos);
-	NVIC_DisableIRQ(TWIM0_TWIS0_IRQn);
+	I2C_REG->ENABLE = (TWIM_ENABLE_ENABLE_Disabled << TWIM_ENABLE_ENABLE_Pos);
+	NVIC_DisableIRQ(I2C_IRQ);
 	vSemaphoreDelete(xSemaphoreI2C);
 }
 
@@ -44,22 +57,22 @@ bool hal_i2c_write(hal_i2c_instance_t const *const i2c_instance, uint8_t *data, 
 	bool ret = false;
 
 	if (xSemaphoreTake(xSemaphoreI2C, 0) == pdTRUE) {
-		NRF_TWIM0->INTENCLR = TWIM_INTENSET_STOPPED_Msk | TWIM_INTENSET_ERROR_Msk |
+		I2C_REG->INTENCLR = TWIM_INTENSET_STOPPED_Msk | TWIM_INTENSET_ERROR_Msk |
 							  TWIM_INTENSET_SUSPENDED_Msk | TWIM_INTENSET_RXSTARTED_Msk |
 							  TWIM_INTENSET_TXSTARTED_Msk | TWIM_INTENSET_LASTRX_Msk |
 							  TWIM_INTENSET_LASTTX_Msk;
 
-		NRF_TWIM0->ADDRESS = i2c_instance->slave_address;
-		NRF_TWIM0->TXD.PTR = (uint32_t)data;
-		NRF_TWIM0->TXD.MAXCNT = size;
+		I2C_REG->ADDRESS = i2c_instance->slave_address;
+		I2C_REG->TXD.PTR = (uint32_t)data;
+		I2C_REG->TXD.MAXCNT = size;
 
-		NRF_TWIM0->EVENTS_ERROR = 0x0UL;
-		NRF_TWIM0->EVENTS_STOPPED = 0x0UL;
-		NRF_TWIM0->EVENTS_LASTTX = 0X0UL;
-		NRF_TWIM0->EVENTS_LASTRX = 0X0UL;
+		I2C_REG->EVENTS_ERROR = 0x0UL;
+		I2C_REG->EVENTS_STOPPED = 0x0UL;
+		I2C_REG->EVENTS_LASTTX = 0X0UL;
+		I2C_REG->EVENTS_LASTRX = 0X0UL;
 
-		NRF_TWIM0->INTENSET = TWIM_INTENSET_STOPPED_Msk | TWIM_INTENSET_LASTTX_Msk;
-		NRF_TWIM0->TASKS_STARTTX = 0x1UL;
+		I2C_REG->INTENSET = TWIM_INTENSET_STOPPED_Msk | TWIM_INTENSET_LASTTX_Msk;
+		I2C_REG->TASKS_STARTTX = 0x1UL;
 
 		ret = xSemaphoreTake(xSemaphoreI2C, i2c_instance->timeout);
 		xSemaphoreGive(xSemaphoreI2C);
@@ -73,22 +86,22 @@ bool hal_i2c_read(hal_i2c_instance_t const *const i2c_instance, uint8_t *data, u
 	bool ret = false;
 
 	if (xSemaphoreTake(xSemaphoreI2C, 0) == pdTRUE) {
-		NRF_TWIM0->INTENCLR = TWIM_INTENSET_STOPPED_Msk | TWIM_INTENSET_ERROR_Msk |
+		I2C_REG->INTENCLR = TWIM_INTENSET_STOPPED_Msk | TWIM_INTENSET_ERROR_Msk |
 							  TWIM_INTENSET_SUSPENDED_Msk | TWIM_INTENSET_RXSTARTED_Msk |
 							  TWIM_INTENSET_TXSTARTED_Msk | TWIM_INTENSET_LASTRX_Msk |
 							  TWIM_INTENSET_LASTTX_Msk;
 
-		NRF_TWIM0->ADDRESS = i2c_instance->slave_address;
-		NRF_TWIM0->RXD.PTR = (uint32_t)data;
-		NRF_TWIM0->RXD.MAXCNT = size;
+		I2C_REG->ADDRESS = i2c_instance->slave_address;
+		I2C_REG->RXD.PTR = (uint32_t)data;
+		I2C_REG->RXD.MAXCNT = size;
 
-		NRF_TWIM0->EVENTS_ERROR = 0x0UL;
-		NRF_TWIM0->EVENTS_STOPPED = 0x0UL;
-		NRF_TWIM0->EVENTS_LASTTX = 0X0UL;
-		NRF_TWIM0->EVENTS_LASTRX = 0X0UL;
+		I2C_REG->EVENTS_ERROR = 0x0UL;
+		I2C_REG->EVENTS_STOPPED = 0x0UL;
+		I2C_REG->EVENTS_LASTTX = 0X0UL;
+		I2C_REG->EVENTS_LASTRX = 0X0UL;
 
-		NRF_TWIM0->INTENSET = TWIM_INTENSET_STOPPED_Msk | TWIM_INTENSET_LASTRX_Msk;
-		NRF_TWIM0->TASKS_STARTRX = 0x1UL;
+		I2C_REG->INTENSET = TWIM_INTENSET_STOPPED_Msk | TWIM_INTENSET_LASTRX_Msk;
+		I2C_REG->TASKS_STARTRX = 0x1UL;
 
 		ret = xSemaphoreTake(xSemaphoreI2C, i2c_instance->timeout);
 		xSemaphoreGive(xSemaphoreI2C);
@@ -98,17 +111,17 @@ bool hal_i2c_read(hal_i2c_instance_t const *const i2c_instance, uint8_t *data, u
 }
 
 
-void twi0_handler(void) {
+void I2C_IRQ_HANDLER(void) {
 	BaseType_t xHigherPriorityTaskWoken = pdFALSE;
 
-	if (NRF_TWIM0->EVENTS_LASTTX) {
-		NRF_TWIM0->TASKS_STOP = 0x1UL;
-	} else if (NRF_TWIM0->EVENTS_LASTRX) {
-		NRF_TWIM0->TASKS_STOP = 0x1UL;
-	} else if (NRF_TWIM0->EVENTS_STOPPED) {
-		NRF_TWIM0->EVENTS_STOPPED = 0x0UL;
+	if (I2C_REG->EVENTS_LASTTX) {
+		I2C_REG->TASKS_STOP = 0x1UL;
+	} else if (I2C_REG->EVENTS_LASTRX) {
+		I2C_REG->TASKS_STOP = 0x1UL;
+	} else if (I2C_REG->EVENTS_STOPPED) {
+		I2C_REG->EVENTS_STOPPED = 0x0UL;
 		xSemaphoreGiveFromISR(xSemaphoreI2C, &xHigherPriorityTaskWoken);
-	} else if (NRF_TWIM0->EVENTS_ERROR) {
+	} else if (I2C_REG->EVENTS_ERROR) {
 		
 	}
 
