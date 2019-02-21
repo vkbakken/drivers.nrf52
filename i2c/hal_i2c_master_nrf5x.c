@@ -3,9 +3,9 @@
 
 
 #if	defined(NRF52810_H)
-	#define SPI_REG				NRF_TWIM0
-    #define SPI_IRQ				TWIM0_TWIS0_IRQn
-    #define SPI_IRQ_HANDLER		twi0_handler
+	#define I2C_REG				NRF_TWIM0
+    #define I2C_IRQ				TWIM0_TWIS0_IRQn
+    #define I2C_IRQ_HANDLER		twi0_handler
 #elif defined(NRF52_H)
 	#define I2C_REG				NRF_TWIM0
     #define I2C_IRQ				SPIM0_SPIS0_TWIM0_TWIS0_SPI0_TWI0_IRQn

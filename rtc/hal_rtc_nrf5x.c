@@ -2,8 +2,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 
-#include "FreeRTOS.h"
-#include "cmsis_gcc.h"
+
 #include "cpu/io.h"
 #include "hal/rtc.h"
 
