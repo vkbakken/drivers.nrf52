@@ -22,11 +22,11 @@ void hal_adc_config(hal_adc_resolution_t res, hal_adc_channel_config_t const *co
 												  (SAADC_CH_CONFIG_TACQ_10us << SAADC_CH_CONFIG_TACQ_Pos);
 
 		// Configure the SAADC channel with VDD as positive input, no negative input(single ended).
-		NRF_SAADC->CH[config[i].channel].PSELP = (uint32_t)config[i].analog_input << SAADC_CH_PSELP_PSELP_Pos;
+		NRF_SAADC->CH[config[i].channel].PSELP = (uint32_t)config[i].analog_input + 1;
 		if(config->mode == ADC_MODE_SINGLE_END){
-			NRF_SAADC->CH[config[i].channel].PSELN = SAADC_CH_PSELN_PSELN_NC << SAADC_CH_PSELN_PSELN_Pos;
+			NRF_SAADC->CH[config[i].channel].PSELN = SAADC_CH_PSELN_PSELN_NC;
 		}else{
-			NRF_SAADC->CH[config[i].channel].PSELN = (uint32_t)config[i].analog_input_diff << SAADC_CH_PSELP_PSELP_Pos;
+			NRF_SAADC->CH[config[i].channel].PSELN = (uint32_t)config[i].analog_input_diff;
 		}
 	}
 

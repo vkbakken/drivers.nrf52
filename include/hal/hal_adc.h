@@ -42,7 +42,7 @@ typedef struct {
 	// from 0 to 7
     uint8_t channel;
 	
-	// from 0 to 9; 0 is not connected, 9 is VDD
+	// from 0 to 9; 8 is not connected, 9 is VDD
     uint8_t analog_input;
     uint8_t analog_input_diff;
 
