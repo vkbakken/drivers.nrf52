@@ -51,7 +51,7 @@ bool hal_adc_sample(int16_t *data_source, uint8_t size, uint32_t ticks) {
 	uint32_t ctx;
 	
     if(xSemaphoreTake(xSemaphoreADC, 0) == pdTRUE){
-        portENABLE_INTERRUPTS();
+		portDISABLE_INTERRUPTS();
 
 		NRF_SAADC->RESULT.MAXCNT = size;
 		NRF_SAADC->RESULT.PTR = (uint32_t)data_source;    
@@ -61,9 +61,8 @@ bool hal_adc_sample(int16_t *data_source, uint8_t size, uint32_t ticks) {
     
 		NVIC_ClearPendingIRQ(SAADC_IRQn);
 		NVIC_EnableIRQ(SAADC_IRQn);
-    
 
-		portDISABLE_INTERRUPTS();
+		portENABLE_INTERRUPTS();
 
 		NRF_SAADC->TASKS_START = 1;
 		while (NRF_SAADC->EVENTS_STARTED == 0);
