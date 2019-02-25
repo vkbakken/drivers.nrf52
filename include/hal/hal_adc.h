@@ -39,10 +39,14 @@ typedef enum {
 
 
 typedef struct {
-	// from 0 to 7
+	/* 
+		Map with the ADC channel
+	*/
     uint8_t channel;
 	
-	// from 0 to 9; 8 is not connected, 9 is VDD
+	/* 
+		Map with the ADC input channel (not the pin number)
+	*/
     uint8_t analog_input;
     uint8_t analog_input_diff;
 
@@ -51,22 +55,22 @@ typedef struct {
 }hal_adc_channel_config_t;
 
 /**
- * @brief 
+ * @brief The interface use for configuring the channel of ADC peripheral
  * 
- * @param res 
- * @param config 
- * @param size 
+ * @param res: ADC resolution
+ * @param config: reference to configuration array
+ * @param size: number of configuration channel
  */
 void hal_adc_config(hal_adc_resolution_t res, hal_adc_channel_config_t const * const config, uint8_t size);
 
 /**
- * @brief 
+ * @brief The interface use for sampling the configured ADC channel
  * 
- * @param data_source 
- * @param size 
- * @param ticks 
- * @return true 
- * @return false 
+ * @param data_source: reference to the buffer use for storing data
+ * @param size: number of conversion
+ * @param ticks: number of tick wait for timeout
+ * @return true: successful conversion
+ * @return false: timeout
  */
 bool hal_adc_sample(int16_t *data_source, uint8_t size, uint32_t ticks);
 
