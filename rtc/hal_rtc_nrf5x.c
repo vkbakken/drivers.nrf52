@@ -67,8 +67,7 @@ static void chk_queue(void) {
 	portDISABLE_INTERRUPTS();
 
 	timer = listGET_OWNER_OF_HEAD_ENTRY(&timer_list);
-	for(size_t i = 0; i < listCURRENT_LIST_LENGTH( &timer_list ); i++){
-		
+	for(size_t i = 0; i < listCURRENT_LIST_LENGTH( &timer_list ); i++){		
         tcntr = hal_rtc_time();
         /*
 		 * If we are within 3 ticks of RTC, we wont be able to set compare.
@@ -78,7 +77,9 @@ static void chk_queue(void) {
 
 		if ((int32_t)(tcntr - listGET_LIST_ITEM_VALUE(&(timer->lnode))) >= delta) {
 			uxListRemove(&(timer->lnode));
-			timer->cb_fun(timer->arg);			
+            if(NULL != timer){
+                timer->cb_fun(timer->arg);			
+            }
 		} else {
 			break;
 		}
