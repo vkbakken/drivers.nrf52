@@ -36,7 +36,7 @@ typedef void (interrupt_callback_t)(void);
  * @param dir 
  * @param pull 
  */
-void hal_gpio_config(uint32_t * port, uint8_t pin, gpio_dir_t dir, gpio_pull_t pull);
+void hal_gpio_config(void * port, uint8_t pin, gpio_dir_t dir, gpio_pull_t pull);
 
 /**
  * @brief 
@@ -46,7 +46,7 @@ void hal_gpio_config(uint32_t * port, uint8_t pin, gpio_dir_t dir, gpio_pull_t p
  * @return true 
  * @return false 
  */
-bool hal_gpio_pin_read(uint32_t * port, uint8_t pin);
+bool hal_gpio_pin_read(void * port, uint8_t pin);
 
 /**
  * @brief 
@@ -55,7 +55,7 @@ bool hal_gpio_pin_read(uint32_t * port, uint8_t pin);
  * @param pin 
  * @param value 
  */
-void hal_gpio_pin_set(uint32_t * port, uint8_t pin, bool value);
+void hal_gpio_pin_set(void * port, uint8_t pin);
 
 /**
  * @brief 
@@ -64,7 +64,7 @@ void hal_gpio_pin_set(uint32_t * port, uint8_t pin, bool value);
  * @param pin 
  * @param value 
  */
-void hal_gpio_pin_clear(uint32_t * port, uint8_t pin, bool value);
+void hal_gpio_pin_clear(void * port, uint8_t pin);
 
 /**
  * @brief 
@@ -72,7 +72,7 @@ void hal_gpio_pin_clear(uint32_t * port, uint8_t pin, bool value);
  * @param port 
  * @param pin 
  */
-void hal_gpio_pin_toggle(uint32_t * port, uint8_t pin);
+void hal_gpio_pin_toggle(void * port, uint8_t pin);
 
 /**
  * @brief 
@@ -84,7 +84,7 @@ void hal_gpio_pin_toggle(uint32_t * port, uint8_t pin);
  * @return true 
  * @return false 
  */
-bool hal_gpio_install_interrupt(uint32_t * port, uint8_t pin, gpio_pull_t pull, gpio_interrupt_signal_t interrupt_signal, interrupt_callback_t * callback);
+bool hal_gpio_install_interrupt(void * port, uint8_t pin, gpio_pull_t pull, gpio_interrupt_signal_t interrupt_signal, interrupt_callback_t * callback);
 
 /**
  * @brief 
@@ -94,7 +94,7 @@ bool hal_gpio_install_interrupt(uint32_t * port, uint8_t pin, gpio_pull_t pull, 
  * @return true 
  * @return false 
  */
-bool hal_gpio_uninstall_interrupt(uint32_t * port, uint8_t pin);
+bool hal_gpio_uninstall_interrupt(void * port, uint8_t pin);
 
 /**
  * @brief 
@@ -103,7 +103,7 @@ bool hal_gpio_uninstall_interrupt(uint32_t * port, uint8_t pin);
  * @param pin 
  * @return uint32_t 
  */
-uint32_t hal_gpio_port_read(uint32_t * port);
+uint32_t hal_gpio_port_read(void * port);
 
 /**
  * @brief 
@@ -111,7 +111,7 @@ uint32_t hal_gpio_port_read(uint32_t * port);
  * @param port 
  * @param value 
  */
-void hal_gpio_port_set(uint32_t * port, bool value);
+void hal_gpio_port_set(void * port, bool value);
 
 /**
  * @brief 
@@ -119,14 +119,14 @@ void hal_gpio_port_set(uint32_t * port, bool value);
  * @param port 
  * @param value 
  */
-void hal_gpio_port_clear(uint32_t * port, bool value);
+void hal_gpio_port_clear(void * port, bool value);
 
 /**
  * @brief 
  * 
  * @param port 
  */
-void hal_gpio_port_toggle(uint32_t * port);
+void hal_gpio_port_toggle(void * port);
 
 #ifdef __cplusplus
 }

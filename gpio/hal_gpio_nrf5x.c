@@ -61,7 +61,7 @@ __STATIC_INLINE void hal_gpio_interrupt_disable(void) {
 	NVIC_DisableIRQ(GPIOTE_IRQn);
 }
 
-void hal_gpio_config(uint32_t *port, uint8_t pin_number, gpio_dir_t dir, gpio_pull_t pull) {
+void hal_gpio_config(void * port, uint8_t pin_number, gpio_dir_t dir, gpio_pull_t pull) {
 	NRF_GPIO_PORT(port)->PIN_CNF[pin_number] = (dir << GPIO_PIN_CNF_DIR_Pos) |
 											   (pull << GPIO_PIN_CNF_PULL_Pos) |
 											   (GPIO_PIN_CNF_INPUT_Disconnect << GPIO_PIN_CNF_INPUT_Pos) |
@@ -69,26 +69,26 @@ void hal_gpio_config(uint32_t *port, uint8_t pin_number, gpio_dir_t dir, gpio_pu
 											   (GPIO_PIN_CNF_SENSE_Disabled << GPIO_PIN_CNF_SENSE_Pos);
 }
 
-bool hal_gpio_pin_read(uint32_t *port, uint8_t pin_number) {
+bool hal_gpio_pin_read(void * port, uint8_t pin_number) {
 	return (NRF_GPIO_PORT(port)->IN >> pin_number) & 0x1UL;
 }
 
-void hal_gpio_pin_set(uint32_t *port, uint8_t pin_number, bool value) {
+void hal_gpio_pin_set(void * port, uint8_t pin_number) {
 	NRF_GPIO_PORT(port)->OUTSET = 0x1UL << pin_number;
 }
 
-void hal_gpio_pin_clear(uint32_t *port, uint8_t pin_number, bool value) {
+void hal_gpio_pin_clear(void * port, uint8_t pin_number) {
 	NRF_GPIO_PORT(port)->OUTCLR = 0x1UL << pin_number;
 }
 
-void hal_gpio_pin_toggle(uint32_t *port, uint8_t pin_number) {
+void hal_gpio_pin_toggle(void * port, uint8_t pin_number) {
 	uint32_t port_state = NRF_GPIO_PORT(port)->OUT;
 
 	NRF_GPIO_PORT(port)->OUTSET = (~port_state & (0x1UL << pin_number));
 	NRF_GPIO_PORT(port)->OUTCLR = (port_state & (0x1UL << pin_number));
 }
 
-bool hal_gpio_install_interrupt(uint32_t *port, uint8_t pin_number, gpio_pull_t pull, gpio_interrupt_signal_t interrupt_signal, interrupt_callback_t *callback) {
+bool hal_gpio_install_interrupt(void * port, uint8_t pin_number, gpio_pull_t pull, gpio_interrupt_signal_t interrupt_signal, interrupt_callback_t *callback) {
 	gpiote_controller_t *tmp_controller = NULL;
 
 	if (NULL == hal_gpiote_nrfx_check_pin_registered(pin_number)) {
@@ -123,7 +123,7 @@ bool hal_gpio_install_interrupt(uint32_t *port, uint8_t pin_number, gpio_pull_t 
 	return false;
 }
 
-bool hal_gpio_uninstall_interrupt(uint32_t *port, uint8_t pin_number) {
+bool hal_gpio_uninstall_interrupt(void * port, uint8_t pin_number) {
 	gpiote_controller_t *tmp_controller = hal_gpiote_nrfx_check_pin_registered(pin_number);
 	if (NULL != tmp_controller) {
 		tmp_controller->pin_assigned = 0;
@@ -143,19 +143,19 @@ bool hal_gpio_uninstall_interrupt(uint32_t *port, uint8_t pin_number) {
 	return false;
 }
 
-uint32_t hal_gpio_port_read(uint32_t *port) {
+uint32_t hal_gpio_port_read(void * port) {
 	return NRF_GPIO_PORT(port)->IN;
 }
 
-void hal_gpio_port_set(uint32_t *port, bool value) {
+void hal_gpio_port_set(void * port, bool value) {
 	NRF_GPIO_PORT(port)->OUTSET = value;
 }
 
-void hal_gpio_port_clear(uint32_t *port, bool value) {
+void hal_gpio_port_clear(void * port, bool value) {
 	NRF_GPIO_PORT(port)->OUTCLR = value;
 }
 
-void hal_gpio_port_toggle(uint32_t *port) {
+void hal_gpio_port_toggle(void * port) {
 	uint32_t port_state = NRF_GPIO_PORT(port)->OUT;
 
 	NRF_GPIO_PORT(port)->OUTSET = (~port_state & 0xFFFFFFFF);
