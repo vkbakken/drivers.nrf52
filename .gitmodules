@@ -1,0 +1,5 @@
+[submodule "dependencies/cpu.nrf52832"]
+	path = dependencies/cpu.nrf52832
+	url = https://github.com/vkbakken/cpu.nrf52832
+[submodule "dependencies/cmsis"]
+	url = https://github.com/ARM-software/CMSIS_5.git

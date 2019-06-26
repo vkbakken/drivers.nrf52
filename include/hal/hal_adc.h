@@ -4,9 +4,6 @@
 
 #include <stdint.h>
 #include <stdbool.h>
-#include "FreeRTOS.h"
-#include "task.h"
-#include "semphr.h"
 
 #ifdef __cplusplus
 extern "C" {
