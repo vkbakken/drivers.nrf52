@@ -50,3 +50,9 @@ modules.order
 Module.symvers
 Mkfile.old
 dkms.conf
+
+test/nrf52832/Output/
+
+*.jlink
+
+*.emSession

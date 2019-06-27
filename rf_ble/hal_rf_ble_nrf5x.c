@@ -6,8 +6,6 @@
 #include "cpu/io.h"
 #include "hal/rf_ble.h"
 
-#include "FreeRTOS.h"
-
 #define __HAL_DISABLE_INTERRUPTS(x) \
 	do {                            \
 		x = __get_PRIMASK();        \
@@ -121,7 +119,7 @@ void hal_rf_ble_send_adv(uint8_t ch, uint8_t *data, void (*cb_done)(void)) {
 	NRF_RADIO->INTENCLR = 0xFFFFffff;
 	NRF_RADIO->SHORTS = DEFAULT_RADIO_SHORTS;
 
-	NVIC_SetPriority(RADIO_IRQn, configLIBRARY_LOWEST_INTERRUPT_PRIORITY);
+	NVIC_SetPriority(RADIO_IRQn, 0);
 	NVIC_ClearPendingIRQ(RADIO_IRQn);
 	NVIC_EnableIRQ(RADIO_IRQn);
 	NRF_RADIO->INTENSET = (RADIO_INTENSET_DISABLED_Enabled << RADIO_INTENSET_DISABLED_Pos);

@@ -3,7 +3,6 @@
 
 
 #include <stdint.h>
-#include "utils/queue.h"
 
 
 #ifdef __cplusplus

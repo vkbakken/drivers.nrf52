@@ -49,7 +49,7 @@ __STATIC_INLINE uint32_t hal_gpiote_nrfx_int_is_enabled(uint32_t mask) {
 }
 
 __STATIC_INLINE void hal_gpio_interrupt_enable(void) {
-	NVIC_SetPriority(GPIOTE_IRQn, configLIBRARY_LOWEST_INTERRUPT_PRIORITY);
+	NVIC_SetPriority(GPIOTE_IRQn, 0);
 	NVIC_ClearPendingIRQ(GPIOTE_IRQn);
 	NVIC_EnableIRQ(GPIOTE_IRQn);
 	NRF_GPIOTE->EVENTS_PORT = 0UL;

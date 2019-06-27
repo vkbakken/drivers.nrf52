@@ -4,19 +4,7 @@
 #include <stdlib.h>
 
 #include "cpu/io.h"
-#include "hal/hal_adc.h"
 
-static int16_t raw_sample[2];
-
-static const hal_adc_channel_config_t adc_config[] = {
-	{.channel = 0,
-		.analog_input = 4,
-		.mode = ADC_MODE_SINGLE_END,
-		.gain = ADC_GAIN_1_4},
-	{.channel = 1,
-		.analog_input = 3,
-		.mode = ADC_MODE_SINGLE_END,
-		.gain = ADC_GAIN_1_4}};
 
 static void pin_init(void)
 {
@@ -55,13 +43,10 @@ void main(void)
 {
 	/*Initialize board*/
 	power_n_clock_init();
-	pin_init();
 
-	hal_adc_config(ADC_RES_10BIT, adc_config, 2);
 
 	while (1) {
-		if (hal_adc_sample(raw_sample, 2, 10)) {
-		}
+
 		uint32_t tmp = 500000;
 		while (tmp--) {
 		}

@@ -1,8 +1,6 @@
 #ifndef HAL_SPI_H_INCLUDED
 #define HAL_SPI_H_INCLUDED
 
-#include "FreeRTOS.h"
-#include "semphr.h"
 #include <stdbool.h>
 #include <stdint.h>
 
