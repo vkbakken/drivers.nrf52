@@ -4,22 +4,11 @@
 #include <stdlib.h>
 
 #include "cpu/io.h"
+#include "hal/rtc.h"
+#include "pins.h"
+#include "hal/hal_gpio.h"
 
-
-static void pin_init(void)
-{
-	NRF_P0->PIN_CNF[28] = (GPIO_PIN_CNF_DIR_Input << GPIO_PIN_CNF_DIR_Pos) |
-						  (GPIO_PIN_CNF_INPUT_Disconnect << GPIO_PIN_CNF_INPUT_Pos) |
-						  (GPIO_PIN_CNF_PULL_Pulldown << GPIO_PIN_CNF_PULL_Pos) |
-						  (GPIO_PIN_CNF_DRIVE_S0S1 << GPIO_PIN_CNF_DRIVE_Pos) |
-						  (GPIO_PIN_CNF_SENSE_Disabled << GPIO_PIN_CNF_SENSE_Pos);
-
-	NRF_P0->PIN_CNF[5] = (GPIO_PIN_CNF_DIR_Input << GPIO_PIN_CNF_DIR_Pos) |
-						 (GPIO_PIN_CNF_INPUT_Disconnect << GPIO_PIN_CNF_INPUT_Pos) |
-						 (GPIO_PIN_CNF_PULL_Disabled << GPIO_PIN_CNF_PULL_Pos) |
-						 (GPIO_PIN_CNF_DRIVE_S0S1 << GPIO_PIN_CNF_DRIVE_Pos) |
-						 (GPIO_PIN_CNF_SENSE_Disabled << GPIO_PIN_CNF_SENSE_Pos);
-}
+static uint32_t timer;
 
 static void power_n_clock_init(void)
 {
@@ -39,16 +28,26 @@ static void power_n_clock_init(void)
 	NRF_POWER->RAM[2].POWERCLR = 0x0303;
 }
 
+void timeout(void)
+{
+	timer++;
+    hal_gpio_pin_toggle(NRF_P0, BOARD_LED1_bp);
+	hal_rtc_set_periodic(&timeout, 32768);
+}
+
 void main(void)
 {
 	/*Initialize board*/
 	power_n_clock_init();
 
+	hal_rtc_init();
+	hal_rtc_set_periodic(&timeout, 32768);
+    hal_gpio_config(NRF_P0, BOARD_LED1_bp, GPIO_OUTPUT, GPIO_NOPULL);
 
 	while (1) {
-
-		uint32_t tmp = 500000;
-		while (tmp--) {
-		}
+		__WFE();
+		// Clear the internal event register.
+		__SEV();
+		__WFE();
 	}
 }

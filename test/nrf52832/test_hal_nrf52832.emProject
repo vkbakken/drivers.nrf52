@@ -121,6 +121,7 @@
       macros="DBG" />
     <folder Name="hal">
       <file file_name="../../rtc/hal_rtc_nrf5x.c" />
+      <file file_name="../../gpio/hal_gpio_nrf5x.c" />
     </folder>
   </project>
   <project Name="rng">
